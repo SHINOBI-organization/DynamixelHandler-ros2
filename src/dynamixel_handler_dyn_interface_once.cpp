@@ -77,7 +77,7 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
     WriteProfileAcc  (id, cmd_values_[id][PROFILE_ACC  ]);
     WriteProfileVel  (id, cmd_values_[id][PROFILE_VEL  ]);
     WriteGoalPosition(id, cmd_values_[id][GOAL_POSITION]);
-    // WriteGains(id, opt_gain_[id]);　// ** Gain値のデフォルトも変わる．面倒な．．．
+    // WriteGains(id, gain_values_[id]);　// ** Gain値のデフォルトも変わる．面倒な．．．
     WriteTorqueEnable(id, is_enable);
     // 結果を確認
     bool is_changed = (ReadOperatingMode(id) == mode);
@@ -111,7 +111,7 @@ bool DynamixelHandler::TorqueOn(uint8_t id){
         WriteProfileAcc  (id, cmd_values_[id][PROFILE_ACC  ]);
         WriteProfileVel  (id, cmd_values_[id][PROFILE_VEL  ]);
         WriteGoalPosition(id, cmd_values_[id][GOAL_POSITION]);
-        // WriteGains(id, opt_gain_[id]); 　// その他電源喪失時に消えるデータを念のため書き込む
+        // WriteGains(id, gain_values_[id]); 　// その他電源喪失時に消えるデータを念のため書き込む
         /*トルクを入れる*/WriteTorqueEnable(id, true);
     }
     // 結果を確認
@@ -274,7 +274,7 @@ bool DynamixelHandler::WriteBusWatchdog(uint8_t id, double time){
     return dyn_comm_.tryWrite(addr, id, addr.val2pulse(time, model_[id]));
 }
 
-bool DynamixelHandler::WriteGains(uint8_t id, array<int64_t, _num_opt_gain> gains){
+bool DynamixelHandler::WriteGains(uint8_t id, array<int64_t, _num_gain> gains){
     bool is_success = true;
     if ( series_[id] != SERIES_X ) {
         is_success &= dyn_comm_.tryWrite(AddrX::velocity_i_gain, id, gains[VELOCITY_I_GAIN]);

@@ -18,12 +18,12 @@ set(msg_files
   "msg/DynamixelError.msg"
 
   # read/write
-  "msg/DynamixelOptionConfig.msg"
-  "msg/DynamixelOptionExtra.msg"
-  "msg/DynamixelOptionGain.msg"
-  "msg/DynamixelOptionGoal.msg"
-  "msg/DynamixelOptionLimit.msg"
-  "msg/DynamixelOptionMode.msg"
+  "msg/DynamixelConfig.msg"
+  "msg/DynamixelExtra.msg"
+  "msg/DynamixelGain.msg"
+  "msg/DynamixelGoal.msg"
+  "msg/DynamixelLimit.msg"
+  "msg/DynamixelMode.msg"
     
   # write専用
   "msg/DynamixelCommand.msg"

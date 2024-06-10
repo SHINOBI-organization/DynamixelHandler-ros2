@@ -8,12 +8,12 @@
 #include "dynamixel_communicator.h"
 #include "dynamixel_handler/msg/dynamixel_state.hpp"
 #include "dynamixel_handler/msg/dynamixel_error.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_config.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_extra.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_gain.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_limit.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_mode.hpp"
-#include "dynamixel_handler/msg/dynamixel_option_goal.hpp"
+#include "dynamixel_handler/msg/dynamixel_config.hpp"
+#include "dynamixel_handler/msg/dynamixel_extra.hpp"
+#include "dynamixel_handler/msg/dynamixel_gain.hpp"
+#include "dynamixel_handler/msg/dynamixel_limit.hpp"
+#include "dynamixel_handler/msg/dynamixel_mode.hpp"
+#include "dynamixel_handler/msg/dynamixel_goal.hpp"
 #include "dynamixel_handler/msg/dynamixel_command.hpp"
 #include "dynamixel_handler/msg/dynamixel_command_x_control_position.hpp"
 #include "dynamixel_handler/msg/dynamixel_command_x_control_velocity.hpp"
@@ -77,15 +77,16 @@ class DynamixelHandler : public rclcpp::Node {
         //* ROS publishを担う関数と subscliber callback関数
         void BroadcastDxlState();
         void BroadcastDxlError();
-        void BroadcastDxlOpt_Config(); // todo
-        void BroadcastDxlOpt_Goal(); 
-        void BroadcastDxlOpt_Limit();
-        void BroadcastDxlOpt_Gain(); 
-        void BroadcastDxlOpt_Mode(); 
-        void CallBackDxlOpt_Limit (const DynamixelOptionLimit& msg); // todo
-        void CallBackDxlOpt_Gain  (const DynamixelOptionGain& msg);  // todo
-        void CallBackDxlOpt_Mode  (const DynamixelOptionMode& msg);  // todo
-        void CallBackDxlCommand                   (const DynamixelCommand& msg);    // todo
+        // void BroadcastDxlConfig(); // todo
+        void BroadcastDxlGoal(); 
+        void BroadcastDxlLimit();
+        void BroadcastDxlGain(); 
+        void BroadcastDxlMode(); 
+        void CallBackDxlLimit (const DynamixelLimit& msg); // todo
+        void CallBackDxlGain  (const DynamixelGain& msg);  // todo
+        void CallBackDxlMode  (const DynamixelMode& msg);  // todo
+        void CallBackDxlGoal  (const DynamixelGoal& msg);  // todo
+        void CallBackDxlCommand               (const DynamixelCommand& msg);    // todo
         void CallBackDxlCmd_X_Position        (const DynamixelCommandXControlPosition& msg);
         void CallBackDxlCmd_X_Velocity        (const DynamixelCommandXControlVelocity& msg);
         void CallBackDxlCmd_X_Current         (const DynamixelCommandXControlCurrent& msg);
@@ -98,10 +99,10 @@ class DynamixelHandler : public rclcpp::Node {
         //* ROS publisher subscriber instance
         rclcpp::Publisher<DynamixelState>::SharedPtr pub_state_;
         rclcpp::Publisher<DynamixelError>::SharedPtr pub_error_;
-        rclcpp::Publisher<DynamixelOptionLimit>::SharedPtr pub_opt_limit_;
-        rclcpp::Publisher<DynamixelOptionGain>::SharedPtr pub_opt_gain_;
-        rclcpp::Publisher<DynamixelOptionMode>::SharedPtr pub_opt_mode_;
-        rclcpp::Publisher<DynamixelOptionGoal>::SharedPtr pub_opt_goal_;
+        rclcpp::Publisher<DynamixelLimit>::SharedPtr pub_limit_;
+        rclcpp::Publisher<DynamixelGain>::SharedPtr pub_gain_;
+        rclcpp::Publisher<DynamixelMode>::SharedPtr pub_mode_;
+        rclcpp::Publisher<DynamixelGoal>::SharedPtr pub_goal_;
         rclcpp::Subscription<DynamixelCommand>::SharedPtr sub_command_;
         rclcpp::Subscription<DynamixelCommandXControlPosition>::SharedPtr sub_cmd_x_pos_;
         rclcpp::Subscription<DynamixelCommandXControlVelocity>::SharedPtr sub_cmd_x_vel_;
@@ -112,15 +113,19 @@ class DynamixelHandler : public rclcpp::Node {
         rclcpp::Subscription<DynamixelCommandPControlVelocity>::SharedPtr sub_cmd_p_vel_;
         rclcpp::Subscription<DynamixelCommandPControlCurrent>::SharedPtr sub_cmd_p_cur_;
         rclcpp::Subscription<DynamixelCommandPControlExtendedPosition>::SharedPtr sub_cmd_p_epos_;
-        rclcpp::Subscription<DynamixelOptionGain>::SharedPtr sub_opt_gain_;
-        rclcpp::Subscription<DynamixelOptionMode>::SharedPtr sub_opt_mode_;
-        rclcpp::Subscription<DynamixelOptionLimit>::SharedPtr sub_opt_limit_;
+        rclcpp::Subscription<DynamixelGain>::SharedPtr sub_gain_;
+        rclcpp::Subscription<DynamixelMode>::SharedPtr sub_mode_;
+        rclcpp::Subscription<DynamixelLimit>::SharedPtr sub_limit_;
+        rclcpp::Subscription<DynamixelGoal>::SharedPtr sub_goal_;
   
         //* 各種のフラグとパラメータ
         unsigned int loop_rate_ = 50;
         unsigned int ratio_state_pub_  = 1;
-        unsigned int ratio_option_pub_ = 100; // 0の時は初回のみ
         unsigned int ratio_error_pub_  = 100; // 0の時は初回のみ
+        unsigned int ratio_limit_pub_  = 100; // 0の時は初回のみ
+        unsigned int ratio_gain_pub_   = 100; // 0の時は初回のみ
+        unsigned int ratio_mode_pub_   = 100; // 0の時は初回のみ
+        unsigned int ratio_goal_pub_   = 100; // 0の時は初回のみ
         unsigned int ratio_mainloop_   = 100; // 0の時は初回のみ
         unsigned int width_log_ = 7;
         bool use_split_write_     = false;
@@ -169,7 +174,7 @@ class DynamixelHandler : public rclcpp::Node {
             OVERLOAD          ,
             /*Indexの最大値*/_num_hw_err
         };
-        enum OptLimitIndex { // opt_limit_のIndex, 各種の制限値
+        enum LimitIndex { // opt_limit_のIndex, 各種の制限値
             NONE = -1, // Indexには使わない特殊値
             TEMPERATURE_LIMIT ,
             MAX_VOLTAGE_LIMIT ,
@@ -180,9 +185,9 @@ class DynamixelHandler : public rclcpp::Node {
             VELOCITY_LIMIT    ,
             MAX_POSITION_LIMIT,
             MIN_POSITION_LIMIT,
-            /*Indexの最大値*/_num_opt_limit
+            /*Indexの最大値*/_num_limit
         };
-        enum OptGainIndex { // opt_gain_のIndex, 各種のゲイン値
+        enum GainIndex { // opt_gain_のIndex, 各種のゲイン値
             VELOCITY_I_GAIN     ,
             VELOCITY_P_GAIN     ,
             POSITION_D_GAIN     ,
@@ -190,7 +195,7 @@ class DynamixelHandler : public rclcpp::Node {
             POSITION_P_GAIN     ,
             FEEDFORWARD_ACC_GAIN,
             FEEDFORWARD_VEL_GAIN, 
-            /*Indexの最大値*/_num_opt_gain           
+            /*Indexの最大値*/_num_gain           
         };
         // 連結したサーボの基本情報
         set<uint8_t> id_set_; // chained dynamixel id list
@@ -204,9 +209,9 @@ class DynamixelHandler : public rclcpp::Node {
         static inline map<uint8_t, array<bool,   _num_hw_err     >> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
         static inline map<uint8_t, array<double, _num_state_value>> state_values_;   // 各dynamixelの id と サーボから毎周期で読み込むことができる値のマップ, 中身の並びはStValueIndexに対応する
         static inline map<uint8_t, array<double, _num_cmd_value  >> cmd_values_;     // 各dynamixelの id と サーボに毎周期で書き込むことができる値のマップ, 中身の並びはCmdValueIndexに対応する
-        static inline map<uint8_t, array<double ,_num_cmd_value  >> option_goal_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはCmdValueIndexに対応する
-        static inline map<uint8_t, array<double, _num_opt_limit  >> option_limit_;   // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptLimitIndexに対応する 
-        static inline map<uint8_t, array<int64_t,_num_opt_gain   >> option_gain_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptGainIndexに対応する 
+        static inline map<uint8_t, array<double ,_num_cmd_value  >> goal_values_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはCmdValueIndexに対応する
+        static inline map<uint8_t, array<double, _num_limit      >> limit_values_;   // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptLimitIndexに対応する 
+        static inline map<uint8_t, array<int64_t,_num_gain       >> gain_values_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptGainIndexに対応する 
         // 上記の変数を適切に使うための補助的なフラグ
         static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ
         static inline map<uint8_t, bool> is_cmd_updated_;       // topicのcallbackによって，cmd_valuesが更新されたかどうかを示すマップ
@@ -248,18 +253,18 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteHomingOffset(uint8_t servo_id, double offset);
         bool WriteOperatingMode(uint8_t servo_id, uint8_t mode);
         bool WriteBusWatchdog(uint8_t servo_id, double time);
-        bool WriteGains(uint8_t servo_id, array<int64_t, _num_opt_gain> gains);
+        bool WriteGains(uint8_t servo_id, array<int64_t, _num_gain> gains);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
-        template <typename Addr=AddrCommon> void SyncWriteCommandValues(set<CmdValueIndex> list_wirte_cmd);
-        template <typename Addr=AddrCommon> void SyncWriteOption_Mode();  // todo 
-        template <typename Addr=AddrCommon> void SyncWriteOption_Gain();  // todo 
-        template <typename Addr=AddrCommon> void SyncWriteOption_Limit(); // todo 
-        template <typename Addr=AddrCommon> double SyncReadStateValues(set<StValueIndex> list_read_state);
+        template <typename Addr=AddrCommon> void SyncWriteCommand(set<CmdValueIndex> list_wirte_cmd);
+        template <typename Addr=AddrCommon> void SyncWriteMode();  // todo 
+        template <typename Addr=AddrCommon> void SyncWriteGain();  // todo 
+        template <typename Addr=AddrCommon> void SyncWriteLimit(); // todo 
+        template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
         template <typename Addr=AddrCommon> double SyncReadHardwareErrors();
-        template <typename Addr=AddrCommon> double SyncReadOption_Mode(); 
-        template <typename Addr=AddrCommon> double SyncReadOption_Gain(); 
-        template <typename Addr=AddrCommon> double SyncReadOption_Limit();
-        template <typename Addr=AddrCommon> double SyncReadOption_Goal();
+        template <typename Addr=AddrCommon> double SyncReadMode(); 
+        template <typename Addr=AddrCommon> double SyncReadGain(); 
+        template <typename Addr=AddrCommon> double SyncReadLimit();
+        template <typename Addr=AddrCommon> double SyncReadGoal();
         template <typename Addr=AddrCommon> void SyncStopDynamixels();
 };
 

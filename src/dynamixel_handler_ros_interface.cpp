@@ -9,14 +9,14 @@ string update_info(const vector<uint8_t>& id_list, const string& what_updated) {
 vector<uint8_t> store_cmd(
     const vector<uint16_t>& id_list, const vector<double>& cmd_list, bool is_angle,
     DynamixelHandler::CmdValueIndex cmd_index, 
-    pair<DynamixelHandler::OptLimitIndex, DynamixelHandler::OptLimitIndex> lim_index
+    pair<DynamixelHandler::LimitIndex, DynamixelHandler::LimitIndex> lim_index
 ) {
     vector<uint8_t> store_id_list; 
     if ( id_list.size() != cmd_list.size() ) return store_id_list;
     for (size_t i=0; i<id_list.size(); i++){
         uint8_t id = id_list[i];
         auto value = is_angle ? deg2rad(cmd_list[i]) : cmd_list[i];
-        auto& limit = DynamixelHandler::option_limit_[id];
+        auto& limit = DynamixelHandler::limit_values_[id];
         auto val_max = ( DynamixelHandler::NONE == lim_index.second ) ?  256*2*M_PI : limit[lim_index.second]; //このあたり一般性のない書き方していてキモい
         auto val_min = ( DynamixelHandler::NONE == lim_index.first  ) ? -256*2*M_PI :
                        (        lim_index.first == lim_index.second ) ?   - val_max : limit[lim_index.first];
@@ -194,8 +194,8 @@ void DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition(const DynamixelCommandP
         ROS_ERROR("Element size all dismatch; skiped callback");
 }
 
-void DynamixelHandler::CallBackDxlOpt_Gain(const DynamixelOptionGain& msg) {
-    // if (varbose_callback_) ROS_INFO("CallBackDxlOpt_Gain");
+void DynamixelHandler::CallBackDxlGain(const DynamixelGain& msg) {
+    // if (varbose_callback_) ROS_INFO("CallBackDxlGain");
     bool is_any = false;
     if (msg.id_list.size() == msg.velocity_i_gain_pulse.size()){ is_any=true;}
     if (msg.id_list.size() == msg.velocity_p_gain_pulse.size()){ is_any=true;}
@@ -210,11 +210,11 @@ void DynamixelHandler::CallBackDxlOpt_Gain(const DynamixelOptionGain& msg) {
     }
 }
 
-void DynamixelHandler::CallBackDxlOpt_Limit(const DynamixelOptionLimit& msg) {
-    // if (varbose_callback_) ROS_INFO("CallBackDxlOpt_Limit");
+void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
+    // if (varbose_callback_) ROS_INFO("CallBackDxlLimit");
     bool is_any = false;
 
-    if (msg.id_list.size() == msg.temperature_limit_deg_c.size()   ){is_any=true;}
+    if (msg.id_list.size() == msg.temperature_limit_deg_c.size()  ){is_any=true;}
     if (msg.id_list.size() == msg.max_voltage_limit_v.size()      ){is_any=true;}
     if (msg.id_list.size() == msg.min_voltage_limit_v.size()      ){is_any=true;}
     if (msg.id_list.size() == msg.pwm_limit_percent.size()        ){is_any=true;}
@@ -230,8 +230,23 @@ void DynamixelHandler::CallBackDxlOpt_Limit(const DynamixelOptionLimit& msg) {
     }
 }
 
-void DynamixelHandler::CallBackDxlOpt_Mode(const DynamixelOptionMode& msg) {
+void DynamixelHandler::CallBackDxlMode(const DynamixelMode& msg) {
  
+}
+
+void DynamixelHandler::CallBackDxlGoal(const DynamixelGoal& msg) {
+    // if (varbose_callback_) ROS_INFO("CallBackDxlGoal");
+    bool is_any = false;
+    if (msg.id_list.size() == msg.pwm_percent.size()      ){is_any=true;}
+    if (msg.id_list.size() == msg.current_ma.size()       ){is_any=true;}
+    if (msg.id_list.size() == msg.velocity_deg_s.size()   ){is_any=true;}
+    if (msg.id_list.size() == msg.profile_vel_deg_s.size()){is_any=true;}
+    if (msg.id_list.size() == msg.profile_acc_deg_ss.size()){is_any=true;}
+    if (msg.id_list.size() == msg.position_deg.size()     ){is_any=true;}
+    if (varbose_callback_) {
+        //  if (is_any) ROS_INFO(" - %d servo(s) goal are updated", (int)msg.id_list.size());
+        //  else                  ROS_ERROR("Element size all dismatch; skiped callback");
+    }
 }
 
 double round4(double val) { return round(val*10000.0)/10000.0; }
@@ -269,10 +284,10 @@ void DynamixelHandler::BroadcastDxlError(){
     pub_error_->publish(msg);
 }
 
-void DynamixelHandler::BroadcastDxlOpt_Limit(){
-    DynamixelOptionLimit msg;
+void DynamixelHandler::BroadcastDxlLimit(){
+    DynamixelLimit msg;
     msg.stamp = this->get_clock()->now();
-    for (const auto& [id, limit] : option_limit_) {
+    for (const auto& [id, limit] : limit_values_) {
         msg.id_list.push_back(id);
         msg.temperature_limit_deg_c.push_back   (round4(limit[TEMPERATURE_LIMIT ]));
         msg.max_voltage_limit_v.push_back      (round4(limit[MAX_VOLTAGE_LIMIT ]));
@@ -284,13 +299,13 @@ void DynamixelHandler::BroadcastDxlOpt_Limit(){
         msg.max_position_limit_deg.push_back   (round4(limit[MAX_POSITION_LIMIT]/DEG));
         msg.min_position_limit_deg.push_back   (round4(limit[MIN_POSITION_LIMIT]/DEG));
     }
-    pub_opt_limit_->publish(msg);
+    pub_limit_->publish(msg);
 }
 
-void DynamixelHandler::BroadcastDxlOpt_Gain(){
-    DynamixelOptionGain msg;
+void DynamixelHandler::BroadcastDxlGain(){
+    DynamixelGain msg;
     msg.stamp = this->get_clock()->now();
-    for ( const auto& [id, gain] : option_gain_ ) {
+    for ( const auto& [id, gain] : gain_values_ ) {
         msg.id_list.push_back(id);
         msg.velocity_i_gain_pulse.push_back     (gain[VELOCITY_I_GAIN     ]);
         msg.velocity_p_gain_pulse.push_back     (gain[VELOCITY_P_GAIN     ]);
@@ -300,11 +315,11 @@ void DynamixelHandler::BroadcastDxlOpt_Gain(){
         msg.feedforward_2nd_gain_pulse.push_back(gain[FEEDFORWARD_ACC_GAIN]);
         msg.feedforward_1st_gain_pulse.push_back(gain[FEEDFORWARD_VEL_GAIN]);
     }
-    pub_opt_gain_->publish(msg);
+    pub_gain_->publish(msg);
 }
 
-void DynamixelHandler::BroadcastDxlOpt_Mode(){
-    DynamixelOptionMode msg;
+void DynamixelHandler::BroadcastDxlMode(){
+    DynamixelMode msg;
     msg.stamp = this->get_clock()->now();
     for ( const auto& id : id_set_ ) {
         msg.id_list.push_back(id);
@@ -320,13 +335,13 @@ void DynamixelHandler::BroadcastDxlOpt_Mode(){
             default: msg.drive_mode.push_back("unknown"); break;
         }
     }
-    pub_opt_mode_->publish(msg);
+    pub_mode_->publish(msg);
 }
 
-void DynamixelHandler::BroadcastDxlOpt_Goal(){
-    DynamixelOptionGoal msg;
+void DynamixelHandler::BroadcastDxlGoal(){
+    DynamixelGoal msg;
     msg.stamp = this->get_clock()->now();
-    for ( const auto& [id, goal] : option_goal_ ) {
+    for ( const auto& [id, goal] : goal_values_ ) {
         msg.id_list.push_back(id);
         msg.pwm_percent.push_back       (round4(goal[GOAL_PWM     ]));
         msg.current_ma.push_back        (round4(goal[GOAL_CURRENT ]));
@@ -335,5 +350,5 @@ void DynamixelHandler::BroadcastDxlOpt_Goal(){
         msg.profile_acc_deg_ss.push_back(round4(goal[PROFILE_ACC  ]/DEG));
         msg.position_deg.push_back      (round4(goal[GOAL_POSITION]/DEG));
     }
-    pub_opt_goal_->publish(msg);
+    pub_goal_->publish(msg);
 }

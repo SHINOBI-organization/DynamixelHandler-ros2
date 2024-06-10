@@ -8,25 +8,26 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     ROS_INFO( "Initializing DynamixelHandler .....");
     // Subscriber / Publisherの設定
     sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 4, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
-    sub_cmd_x_pos_  = create_subscription<DynamixelCommandXControlPosition>        ("dynamixel/cmd/x/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Position, this, _1));
-    sub_cmd_x_vel_  = create_subscription<DynamixelCommandXControlVelocity>        ("dynamixel/cmd/x/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Velocity, this, _1));
-    sub_cmd_x_cur_  = create_subscription<DynamixelCommandXControlCurrent>         ("dynamixel/cmd/x/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_X_Current, this, _1));
-    sub_cmd_x_cpos_ = create_subscription<DynamixelCommandXControlCurrentPosition> ("dynamixel/cmd/x/current_position",  4, bind(&DynamixelHandler::CallBackDxlCmd_X_CurrentPosition, this, _1));
-    sub_cmd_x_epos_ = create_subscription<DynamixelCommandXControlExtendedPosition>("dynamixel/cmd/x/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition, this, _1));
-    sub_cmd_p_pos_  = create_subscription<DynamixelCommandPControlPosition>        ("dynamixel/cmd/p/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Position, this, _1));
-    sub_cmd_p_vel_  = create_subscription<DynamixelCommandPControlVelocity>        ("dynamixel/cmd/p/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Velocity, this, _1));
-    sub_cmd_p_cur_  = create_subscription<DynamixelCommandPControlCurrent>         ("dynamixel/cmd/p/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_P_Current, this, _1));
-    sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/cmd/p/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1));
-    sub_opt_gain_ = create_subscription<DynamixelOptionGain> ("dynamixel/opt/gain/w", 4, bind(&DynamixelHandler::CallBackDxlOpt_Gain, this, _1));
-    sub_opt_mode_ = create_subscription<DynamixelOptionMode> ("dynamixel/opt/mode/w", 4, bind(&DynamixelHandler::CallBackDxlOpt_Mode, this, _1));
-    sub_opt_limit_= create_subscription<DynamixelOptionLimit>("dynamixel/opt/limit/w",4, bind(&DynamixelHandler::CallBackDxlOpt_Limit, this, _1));
+    sub_cmd_x_pos_  = create_subscription<DynamixelCommandXControlPosition>        ("dynamixel/x_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Position, this, _1));
+    sub_cmd_x_vel_  = create_subscription<DynamixelCommandXControlVelocity>        ("dynamixel/x_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Velocity, this, _1));
+    sub_cmd_x_cur_  = create_subscription<DynamixelCommandXControlCurrent>         ("dynamixel/x_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_X_Current, this, _1));
+    sub_cmd_x_cpos_ = create_subscription<DynamixelCommandXControlCurrentPosition> ("dynamixel/x_cmd/current_position",  4, bind(&DynamixelHandler::CallBackDxlCmd_X_CurrentPosition, this, _1));
+    sub_cmd_x_epos_ = create_subscription<DynamixelCommandXControlExtendedPosition>("dynamixel/x_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition, this, _1));
+    sub_cmd_p_pos_  = create_subscription<DynamixelCommandPControlPosition>        ("dynamixel/p_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Position, this, _1));
+    sub_cmd_p_vel_  = create_subscription<DynamixelCommandPControlVelocity>        ("dynamixel/p_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Velocity, this, _1));
+    sub_cmd_p_cur_  = create_subscription<DynamixelCommandPControlCurrent>         ("dynamixel/p_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_P_Current, this, _1));
+    sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1));
+    sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1));
+    sub_mode_ = create_subscription<DynamixelMode> ("dynamixel/mode/w", 4, bind(&DynamixelHandler::CallBackDxlMode, this, _1));
+    sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1));
+    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
 
     pub_state_     = create_publisher<DynamixelState>("dynamixel/state", 4);
     pub_error_     = create_publisher<DynamixelError>("dynamixel/error", 4);
-    pub_opt_limit_ = create_publisher<DynamixelOptionLimit>("dynamixel/opt/limit/r", 4);
-    pub_opt_gain_  = create_publisher<DynamixelOptionGain> ("dynamixel/opt/gain/r",  4);
-    pub_opt_mode_  = create_publisher<DynamixelOptionMode> ("dynamixel/opt/mode/r",  4);
-    pub_opt_goal_  = create_publisher<DynamixelOptionGoal> ("dynamixel/opt/goal/r",  4);
+    pub_gain_  = create_publisher<DynamixelGain> ("dynamixel/gain/r",  4);
+    pub_mode_  = create_publisher<DynamixelMode> ("dynamixel/mode/r",  4);
+    pub_limit_ = create_publisher<DynamixelLimit>("dynamixel/limit/r", 4);
+    pub_goal_  = create_publisher<DynamixelGoal> ("dynamixel/goal/r",  4);
 
     // 通信の開始
     this->declare_parameter("baudrate", 57600);
@@ -56,9 +57,12 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
 
     // main loop の設定
     this->declare_parameter("loop_rate",           50);
-    this->declare_parameter("ratio/state_read",     1);
-    this->declare_parameter("ratio/option_read",    0);
-    this->declare_parameter("ratio/error_read",   100);
+    this->declare_parameter("ratio/read_state",     1);
+    this->declare_parameter("ratio/read_error",   100);
+    this->declare_parameter("ratio/read_limit",    0);
+    this->declare_parameter("ratio/read_gain",     0);
+    this->declare_parameter("ratio/read_mode",     0);
+    this->declare_parameter("ratio/read_goal",     0);
     this->declare_parameter("ratio/varbose_loop", 100);
     this->declare_parameter("max_log_width",        7);
     this->declare_parameter("use/split_write",     false);
@@ -70,13 +74,16 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     this->declare_parameter("varbose/write_option",       false);
     this->declare_parameter("varbose/read_state/raw",     false);
     this->declare_parameter("varbose/read_state/err",     false);
-    this->declare_parameter("varbose/read_option/raw",    false);
-    this->declare_parameter("varbose/read_option/err",    false);
+    this->declare_parameter("varbose/read_options/raw",    false);
+    this->declare_parameter("varbose/read_options/err",    false);
     this->declare_parameter("varbose/read_hardware_error",false);
     loop_rate_        = get_parameter("loop_rate"         ).as_int();
-    ratio_state_pub_  = get_parameter("ratio/state_read"  ).as_int();
-    ratio_option_pub_ = get_parameter("ratio/option_read" ).as_int();
-    ratio_error_pub_  = get_parameter("ratio/error_read"  ).as_int();
+    ratio_state_pub_  = get_parameter("ratio/read_state"  ).as_int();
+    ratio_error_pub_  = get_parameter("ratio/read_error"  ).as_int();
+    ratio_limit_pub_  = get_parameter("ratio/read_limit"  ).as_int();
+    ratio_gain_pub_   = get_parameter("ratio/read_gain"   ).as_int();
+    ratio_mode_pub_   = get_parameter("ratio/read_mode"   ).as_int();
+    ratio_goal_pub_   = get_parameter("ratio/read_goal"   ).as_int();
     ratio_mainloop_   = get_parameter("ratio/varbose_loop").as_int();
     width_log_        = get_parameter("max_log_width"     ).as_int();
     use_split_write_     = get_parameter("use/split_write"    ).as_bool();
@@ -88,8 +95,8 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     varbose_write_opt_    = get_parameter("varbose/write_option"       ).as_bool();
     varbose_read_st_      = get_parameter("varbose/read_state/raw"     ).as_bool();
     varbose_read_st_err_  = get_parameter("varbose/read_state/err"     ).as_bool();
-    varbose_read_opt_     = get_parameter("varbose/read_option/raw"    ).as_bool();
-    varbose_read_opt_err_ = get_parameter("varbose/read_option/err"    ).as_bool();
+    varbose_read_opt_     = get_parameter("varbose/read_options/raw"    ).as_bool();
+    varbose_read_opt_err_ = get_parameter("varbose/read_options/err"    ).as_bool();
     varbose_read_hwerr_   = get_parameter("varbose/read_hardware_error").as_bool();
 
     // id_listの作成
@@ -127,11 +134,11 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     // 最初の一回は全ての情報をread & publish
     ROS_INFO( " Reading present dynamixel state  ...");
     while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(500); BroadcastDxlError(); ROS_INFO( "  ... error read done ");
-    while ( rclcpp::ok() && SyncReadOption_Limit() < 1.0-1e-6 ) rsleep(500); BroadcastDxlOpt_Limit(); ROS_INFO( "  ... limit read done ");
-    while ( rclcpp::ok() && SyncReadOption_Gain()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlOpt_Gain();  ROS_INFO( "  ... gain read done ");
-    while ( rclcpp::ok() && SyncReadOption_Mode()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlOpt_Mode();  ROS_INFO( "  ... mode read done ");
-    // while ( ros::ok() && SyncReadOption_Config()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlOpt_Config();
-    // while ( ros::ok() && SyncReadOption_Extra()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlOpt_Extra();
+    while ( rclcpp::ok() && SyncReadLimit() < 1.0-1e-6 ) rsleep(500); BroadcastDxlLimit(); ROS_INFO( "  ... limit read done ");
+    while ( rclcpp::ok() && SyncReadGain()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  ROS_INFO( "  ... gain read done ");
+    while ( rclcpp::ok() && SyncReadMode()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlMode();  ROS_INFO( "  ... mode read done ");
+    // while ( ros::ok() && SyncReadConfig()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlConfig();
+    // while ( ros::ok() && SyncReadExtra()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlExtra();
     for (auto id : id_set_) {     // cmd_values_の内部の情報の初期化, cmd_values_は sync read する関数を持ってないので以下の様に手動で．
         op_mode_[id] = ReadOperatingMode(id);
         cmd_values_[id][GOAL_PWM]      = ReadGoalPWM(id);
@@ -204,7 +211,7 @@ void DynamixelHandler::MainLoop(){
 
 /* 処理時間時間の計測 */ auto wstart = system_clock::now();
     //* topicをSubscribe & Dynamixelへ目標角をWrite
-    SyncWriteCommandValues(list_write_cmd_);
+    SyncWriteCommand(list_write_cmd_);
     list_write_cmd_.clear();
 /* 処理時間時間の計測 */ wtime += duration_cast<microseconds>(system_clock::now()-wstart).count() / 1000.0;
 
@@ -226,7 +233,7 @@ void DynamixelHandler::MainLoop(){
     //* Dynamixelから状態Read & topicをPublish
     if ( !list_read_state_.empty() ) // list_read_state_が空でない場合のみ実行
     if ( ratio_state_pub_ && cnt % ratio_state_pub_ == 0 ) {// ratio_state_pub_の割合で実行
-        double rate_suc_st = SyncReadStateValues(list_read_state_);
+        double rate_suc_st = SyncReadState(list_read_state_);
         num_st_read++;
         num_st_suc_p += rate_suc_st > 0.0;
         num_st_suc_f += rate_suc_st > 1.0-1e-6;
@@ -236,15 +243,21 @@ void DynamixelHandler::MainLoop(){
         double rate_suc_err = SyncReadHardwareErrors();
         if ( rate_suc_err>0.0) BroadcastDxlError();
     }
-    if ( ratio_option_pub_ && cnt % ratio_option_pub_ == 0 ) { // ratio_option_pub_の割合で実行
-        double rate_suc_lim = SyncReadOption_Limit(); // 処理を追加する可能性を考えて，変数を別で用意する冗長な書き方をしている．
-        if ( rate_suc_lim >0.0 ) BroadcastDxlOpt_Limit();
-        double rate_suc_gain = SyncReadOption_Gain();
-        if ( rate_suc_gain>0.0 ) BroadcastDxlOpt_Gain();
-        double rate_suc_mode = SyncReadOption_Mode();
-        if ( rate_suc_mode>0.0 ) BroadcastDxlOpt_Mode();
-        double rate_suc_goal = SyncReadOption_Goal();
-        if ( rate_suc_goal>0.0 ) BroadcastDxlOpt_Goal();
+    if ( ratio_limit_pub_ && cnt % ratio_limit_pub_ == 0 ) { // ratio_limit_pub_
+        double rate_suc_lim = SyncReadLimit(); // 処理を追加する可能性を考えて，変数を別で用意する冗長な書き方をしている．
+        if ( rate_suc_lim >0.0 ) BroadcastDxlLimit();
+    }
+    if ( ratio_gain_pub_ && cnt % ratio_gain_pub_ == 0 ) { // ratio_gain_pub_
+        double rate_suc_gain = SyncReadGain();
+        if ( rate_suc_gain>0.0 ) BroadcastDxlGain();
+    }
+    if ( ratio_mode_pub_ && cnt % ratio_mode_pub_ == 0 ) { // ratio_mode_pub_
+        double rate_suc_mode = SyncReadMode();
+        if ( rate_suc_mode>0.0 ) BroadcastDxlMode();
+    }
+    if ( ratio_goal_pub_ && cnt % ratio_goal_pub_ == 0 ) { // ratio_goal_pub_
+        double rate_suc_goal = SyncReadGoal();
+        if ( rate_suc_goal>0.0 ) BroadcastDxlGoal();
     }
 /* 処理時間時間の計測 */ rtime += duration_cast<microseconds>(system_clock::now()-rstart).count() / 1000.0;
 
