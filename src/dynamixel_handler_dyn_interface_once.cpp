@@ -70,14 +70,14 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
     const bool is_enable = (ReadTorqueEnable(id) == TORQUE_ENABLE); // read失敗しても0が返ってくるので問題ない
     WriteTorqueEnable(id, false);
     /*モード変更*/WriteOperatingMode(id, mode);  //**RAMのデータが消えるので注意, これは電源喪失とは異なるのでRAMデータの回復を入れる
-    // cmd_values_を全部書き込んで，本体とこのプログラムの同期行う．
-    WriteGoalPWM     (id, cmd_values_[id][GOAL_PWM     ]);
-    WriteGoalCurrent (id, cmd_values_[id][GOAL_CURRENT ]);
-    WriteGoalVelocity(id, cmd_values_[id][GOAL_VELOCITY]);
-    WriteProfileAcc  (id, cmd_values_[id][PROFILE_ACC  ]);
-    WriteProfileVel  (id, cmd_values_[id][PROFILE_VEL  ]);
-    WriteGoalPosition(id, cmd_values_[id][GOAL_POSITION]);
-    // WriteGains(id, gain_values_[id]);　// ** Gain値のデフォルトも変わる．面倒な．．．
+    // goal_w_を全部書き込んで，本体とこのプログラムの同期行う．
+    WriteGoalPWM     (id, goal_w_[id][GOAL_PWM     ]);
+    WriteGoalCurrent (id, goal_w_[id][GOAL_CURRENT ]);
+    WriteGoalVelocity(id, goal_w_[id][GOAL_VELOCITY]);
+    WriteProfileAcc  (id, goal_w_[id][PROFILE_ACC  ]);
+    WriteProfileVel  (id, goal_w_[id][PROFILE_VEL  ]);
+    WriteGoalPosition(id, goal_w_[id][GOAL_POSITION]);
+    // WriteGains(id, gain_r_[id]);　// ** Gain値のデフォルトも変わる．面倒な．．．
     WriteTorqueEnable(id, is_enable);
     // 結果を確認
     bool is_changed = (ReadOperatingMode(id) == mode);
@@ -96,22 +96,22 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
 // モータを停止させてからトルクを入れる．
 bool DynamixelHandler::TorqueOn(uint8_t id){
     if ( !is_in(id, id_set_) ) return false;
-    // dynamixel内のgoal値とこのプログラム内のcmd_values_を一致させる．
+    // dynamixel内のgoal値とこのプログラム内のgoal_w_を一致させる．
     const auto now_pos = ReadPresentPosition(id); // 失敗すると0が返って危ないので確認する
     if ( !( dyn_comm_.timeout_last_read() || dyn_comm_.comm_error_last_read() )){
-        // 急に動き出さないように，以下のcmd_values_を設定する
-        cmd_values_[id][GOAL_POSITION] = now_pos; // トルクがオフならDynamixel本体のgoal_positionはpresent_positionと一致している．
-        if (op_mode_[id]==OPERATING_MODE_VELOCITY) cmd_values_[id][GOAL_VELOCITY] = 0.0;
-        if (op_mode_[id]==OPERATING_MODE_CURRENT ) cmd_values_[id][GOAL_CURRENT ] = 0.0;
-        if (op_mode_[id]==OPERATING_MODE_PWM     ) cmd_values_[id][GOAL_PWM     ] = 0.0;
-        // cmd_values_を全部書き込んで，本体とこのプログラムの同期行う．
-        WriteGoalPWM     (id, cmd_values_[id][GOAL_PWM     ]);
-        WriteGoalCurrent (id, cmd_values_[id][GOAL_CURRENT ]);
-        WriteGoalVelocity(id, cmd_values_[id][GOAL_VELOCITY]);
-        WriteProfileAcc  (id, cmd_values_[id][PROFILE_ACC  ]);
-        WriteProfileVel  (id, cmd_values_[id][PROFILE_VEL  ]);
-        WriteGoalPosition(id, cmd_values_[id][GOAL_POSITION]);
-        // WriteGains(id, gain_values_[id]); 　// その他電源喪失時に消えるデータを念のため書き込む
+        // 急に動き出さないように，以下のgoal_w_を設定する
+        goal_w_[id][GOAL_POSITION] = now_pos; // トルクがオフならDynamixel本体のgoal_positionはpresent_positionと一致している．
+        if (op_mode_[id]==OPERATING_MODE_VELOCITY) goal_w_[id][GOAL_VELOCITY] = 0.0;
+        if (op_mode_[id]==OPERATING_MODE_CURRENT ) goal_w_[id][GOAL_CURRENT ] = 0.0;
+        if (op_mode_[id]==OPERATING_MODE_PWM     ) goal_w_[id][GOAL_PWM     ] = 0.0;
+        // goal_w_を全部書き込んで，本体とこのプログラムの同期行う．
+        WriteGoalPWM     (id, goal_w_[id][GOAL_PWM     ]);
+        WriteGoalCurrent (id, goal_w_[id][GOAL_CURRENT ]);
+        WriteGoalVelocity(id, goal_w_[id][GOAL_VELOCITY]);
+        WriteProfileAcc  (id, goal_w_[id][PROFILE_ACC  ]);
+        WriteProfileVel  (id, goal_w_[id][PROFILE_VEL  ]);
+        WriteGoalPosition(id, goal_w_[id][GOAL_POSITION]);
+        // WriteGains(id, gain_r_[id]); 　// その他電源喪失時に消えるデータを念のため書き込む
         /*トルクを入れる*/WriteTorqueEnable(id, true);
     }
     // 結果を確認

@@ -3,52 +3,52 @@
 //* Main loop 内で使う全モータへの一括読み書き関数たち
 
 /**
- * @func SyncWriteCommand
+ * @func SyncWriteGoal
  * @brief 指定した範囲のコマンド値を書き込む
- * @param list_write_cmd 書き込むコマンドのEnumのリスト
+ * @param list_write_goal 書き込むコマンドのEnumのリスト
 */
-template <> void DynamixelHandler::SyncWriteCommand(set<CmdValueIndex> list_write_cmd){
-    SyncWriteCommand<AddrX>(list_write_cmd);
-    SyncWriteCommand<AddrP>(list_write_cmd);
+template <> void DynamixelHandler::SyncWriteGoal(set<GoalValueIndex> list_write_goal){
+    SyncWriteGoal<AddrX>(list_write_goal);
+    SyncWriteGoal<AddrP>(list_write_goal);
 }
-template <typename Addr> void DynamixelHandler::SyncWriteCommand(set<CmdValueIndex> list_write_cmd){
-    if ( list_write_cmd.empty() ) return; // 空なら即時return
+template <typename Addr> void DynamixelHandler::SyncWriteGoal(set<GoalValueIndex> list_write_goal){
+    if ( list_write_goal.empty() ) return; // 空なら即時return
     //* 書き込む範囲のイテレータを取得, 分割書き込みが有効な場合書き込む範囲を1つ目のみに制限,残りは再帰的に処理する．
-    auto [start,end] = minmax_element(list_write_cmd.begin(), list_write_cmd.end()); 
+    auto [start,end] = minmax_element(list_write_goal.begin(), list_write_goal.end()); 
     if ( use_split_write_ ) end = start; // 分割書き込みが有効な場合は書き込む範囲を1つ目のみに制限
     //* 書き込みに必要な変数を用意
-    vector<DynamixelAddress> cmd_addr_list;  // 書き込むコマンドのアドレスのベクタ
-    map<uint8_t, vector<int64_t>> id_cmd_vec_map; // id と 書き込むデータのベクタのマップ
-    for (CmdValueIndex cmd = *start; cmd <= *end; cmd++) { // アドレスのベクタと，データのベクタの並びは対応している必要があるので，同一のループで作成する．
-        switch (cmd) {
-            case GOAL_PWM      : cmd_addr_list.push_back(Addr::goal_pwm            ); break;
-            case GOAL_CURRENT  : cmd_addr_list.push_back(Addr::goal_current        ); break;
-            case GOAL_VELOCITY : cmd_addr_list.push_back(Addr::goal_velocity       ); break;
-            case PROFILE_ACC   : cmd_addr_list.push_back(Addr::profile_acceleration); break;
-            case PROFILE_VEL   : cmd_addr_list.push_back(Addr::profile_velocity    ); break;
-            case GOAL_POSITION : cmd_addr_list.push_back(Addr::goal_position       ); break;
+    vector<DynamixelAddress> goal_addr_list;  // 書き込むコマンドのアドレスのベクタ
+    map<uint8_t, vector<int64_t>> id_goal_vec_map; // id と 書き込むデータのベクタのマップ
+    for (GoalValueIndex goal = *start; goal <= *end; goal++) { // アドレスのベクタと，データのベクタの並びは対応している必要があるので，同一のループで作成する．
+        switch (goal) {
+            case GOAL_PWM      : goal_addr_list.push_back(Addr::goal_pwm            ); break;
+            case GOAL_CURRENT  : goal_addr_list.push_back(Addr::goal_current        ); break;
+            case GOAL_VELOCITY : goal_addr_list.push_back(Addr::goal_velocity       ); break;
+            case PROFILE_ACC   : goal_addr_list.push_back(Addr::profile_acceleration); break;
+            case PROFILE_VEL   : goal_addr_list.push_back(Addr::profile_velocity    ); break;
+            case GOAL_POSITION : goal_addr_list.push_back(Addr::goal_position       ); break;
             default: /*ここに来たらエラ-*/ exit(1);
         }
-        const auto& addr = cmd_addr_list.back();
+        const auto& addr = goal_addr_list.back();
         for (auto id : id_set_) if ( series_[id]==Addr::series() ) {
-            if ( !is_cmd_updated_[id] ) continue;
-            id_cmd_vec_map[id].push_back( addr.val2pulse( cmd_values_[id][cmd], model_[id] ) );
+            if ( !is_goal_updated_[id] ) continue;
+            id_goal_vec_map[id].push_back( addr.val2pulse( goal_w_[id][goal], model_[id] ) );
         }
     }
-    if ( id_cmd_vec_map.empty() ) return; // 書き込むデータがない場合は即時return
-    //* id_cmd_vec_mapの中身を確認
+    if ( id_goal_vec_map.empty() ) return; // 書き込むデータがない場合は即時return
+    //* id_goal_vec_mapの中身を確認
     if ( varbose_write_cmd_ ) {
-        char header[100]; sprintf(header, "[%d] servo(s) will be written", (int)id_cmd_vec_map.size());
-        auto ss = control_table_layout(width_log_, id_cmd_vec_map, cmd_addr_list, string(header));
+        char header[100]; sprintf(header, "[%d] servo(s) will be written", (int)id_goal_vec_map.size());
+        auto ss = control_table_layout(width_log_, id_goal_vec_map, goal_addr_list, string(header));
         ROS_INFO_STREAM(ss);
     }
     //*SyncWriteでまとめて書き込み
-    dyn_comm_.SyncWrite(cmd_addr_list, id_cmd_vec_map);
+    dyn_comm_.SyncWrite(goal_addr_list, id_goal_vec_map);
     //*再帰的に処理, use_split_write_=falseの場合は全て削除されるので,再帰しない
-    list_write_cmd.erase(start, ++end);  // 今回書き込んだ範囲を消去
-    SyncWriteCommand<Addr>(list_write_cmd);
+    list_write_goal.erase(start, ++end);  // 今回書き込んだ範囲を消去
+    SyncWriteGoal<Addr>(list_write_goal);
     //*後処理，再帰の終端で実行される, 書き込んだ id のフラグをリセット
-    for (const auto& [id, _] : id_cmd_vec_map) is_cmd_updated_[id] = false;
+    for (const auto& [id, _] : id_goal_vec_map) is_goal_updated_[id] = false;
 }
 
 template <> void DynamixelHandler::SyncWriteMode(){
@@ -135,13 +135,13 @@ template <typename Addr> double DynamixelHandler::SyncReadState(set<StValueIndex
         ROS_INFO_STREAM(ss);
         if ( has_hardware_err_ ) ROS_WARN( "Hardware Error are detected");
     }
-    //* state_values_に反映
+    //* state_r_に反映
     const int num_state_next = list_read_state.size();
     const int num_state_now = *end-*start+1;
     for (int i = 0; i < num_state_now; i++) {
         const auto addr = state_addr_list[i];
         for (const auto& [id, data_int] : id_st_vec_map)
-            state_values_[id][*start+i] = addr.pulse2val( data_int[i], model_[id]);
+            state_r_[id][*start+i] = addr.pulse2val( data_int[i], model_[id]);
     }
     // 今回読み込んだ範囲を消去して残りを再帰的に処理, use_split_read_=falseの場合は全て削除されるので,再帰しない
     list_read_state.erase(start, ++end); // 今回読み込んだ範囲を消去
@@ -272,11 +272,11 @@ template <typename Addr> double DynamixelHandler::SyncReadGain(){
         auto ss = control_table_layout(width_log_, id_gain_vec_map, gain_addr_list, string(header));
         ROS_INFO_STREAM(ss);
     }
-    // gain_values_に反映
+    // gain_r_に反映
     for ( size_t addr_gain=0; addr_gain<gain_addr_list.size(); addr_gain++) {
         DynamixelAddress addr = gain_addr_list[addr_gain];
         for (const auto& [id, data_int] : id_gain_vec_map)
-            gain_values_[id][addr_gain] = addr.pulse2val( data_int[addr_gain], model_[id] );
+            gain_r_[id][addr_gain] = addr.pulse2val( data_int[addr_gain], model_[id] );
     }
     return id_gain_vec_map.size() / (double)target_id_list.size();
 }
@@ -344,11 +344,11 @@ template <typename Addr> double DynamixelHandler::SyncReadLimit(){
             ROS_WARN_STREAM(ss);
         }
     }
-    // limit_values_に反映
+    // limit_r_に反映
     for ( size_t addr_lim=0; addr_lim<limit_addr_list.size(); addr_lim++) {
         DynamixelAddress addr = limit_addr_list[addr_lim];
         for (const auto& [id, data_int] : id_limit_vec_map)
-            limit_values_[id][addr_lim] = addr.pulse2val( data_int[addr_lim], model_[id] );
+            limit_r_[id][addr_lim] = addr.pulse2val( data_int[addr_lim], model_[id] );
     }
     return id_limit_vec_map.size() / (double)target_id_list.size();
 }
@@ -364,10 +364,10 @@ template <> double DynamixelHandler::SyncReadGoal(){
     return (suc_rate_X * num_[SERIES_X] + suc_rate_P * num_[SERIES_P]) / series_.size();
 }
 template <typename Addr> double DynamixelHandler::SyncReadGoal() {
-    CmdValueIndex start = GOAL_PWM;
-    CmdValueIndex end   = GOAL_POSITION;
+    GoalValueIndex start = GOAL_PWM;
+    GoalValueIndex end   = GOAL_POSITION;
     vector<DynamixelAddress> goal_addr_list;
-    for (CmdValueIndex g=start; g<=end; g++) switch ( g ) {
+    for (GoalValueIndex g=start; g<=end; g++) switch ( g ) {
         case GOAL_PWM      : goal_addr_list.push_back(Addr::goal_pwm      ); break;
         case GOAL_CURRENT  : goal_addr_list.push_back(Addr::goal_current  ); break;
         case GOAL_VELOCITY : goal_addr_list.push_back(Addr::goal_velocity ); break;
@@ -399,21 +399,21 @@ template <typename Addr> double DynamixelHandler::SyncReadGoal() {
         auto ss = control_table_layout(width_log_, id_goal_vec_map, goal_addr_list, string(header));
         ROS_INFO_STREAM(ss);
     }
-    // goal_values_に反映
+    // goal_r_に反映
     for ( size_t addr_goal=0; addr_goal<goal_addr_list.size(); addr_goal++) {
         DynamixelAddress addr = goal_addr_list[addr_goal];
         for (const auto& [id, data_int] : id_goal_vec_map)
-            goal_values_[id][addr_goal] = addr.pulse2val( data_int[addr_goal], model_[id] );
+            goal_r_[id][addr_goal] = addr.pulse2val( data_int[addr_goal], model_[id] );
     }
     return id_goal_vec_map.size() / (double)target_id_list.size();
 }
 
 // 全てのモータの動作を停止させる．
-template <> void DynamixelHandler::SyncStopDynamixels(){
-    SyncStopDynamixels<AddrX>();
-    SyncStopDynamixels<AddrP>();
+template <> void DynamixelHandler::StopDynamixels(){
+    StopDynamixels<AddrX>();
+    StopDynamixels<AddrP>();
 } 
-template <typename Addr> void DynamixelHandler::SyncStopDynamixels(){
+template <typename Addr> void DynamixelHandler::StopDynamixels(){
     vector<uint8_t> id_list; 
     for (auto id : id_set_) if ( series_[id]==Addr::series() ) id_list.push_back(id);
     vector<int64_t> offset_pulse(id_list.size(), 0);

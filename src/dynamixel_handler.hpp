@@ -145,16 +145,16 @@ class DynamixelHandler : public rclcpp::Node {
         DynamixelCommunicator dyn_comm_;
 
         //* Dynamixelを扱うための変数群 
-        enum CmdValueIndex { //　cmd_values_のIndex, サーボに毎周期で書き込むことができる値
+        enum GoalValueIndex { //　goal_w_のIndex, サーボに毎周期で書き込むことができる値
             GOAL_PWM     ,
             GOAL_CURRENT ,
             GOAL_VELOCITY,
             PROFILE_ACC  ,
             PROFILE_VEL  ,
             GOAL_POSITION,
-            /*Indexの最大値*/_num_cmd_value
+            /*Indexの最大値*/_num_goal_value
         };
-        enum StValueIndex { // state_values_のIndex, サーボから毎周期で読み込むことができる値
+        enum StValueIndex { // state_r_のIndex, サーボから毎周期で読み込むことができる値
             PRESENT_PWM          ,
             PRESENT_CURRENT      ,
             PRESENT_VELOCITY     ,
@@ -163,7 +163,7 @@ class DynamixelHandler : public rclcpp::Node {
             POSITION_TRAJECTORY  ,
             PRESENT_INPUT_VOLTAGE,
             PRESENT_TEMPERTURE   ,
-            /*Indexの最大値*/_num_state_value
+            /*Indexの最大値*/_num_st_value
         };
         enum HWErrIndex { // hardware_error_のIndex, サーボが起こしたハードウェアエラー
             INPUT_VOLTAGE     ,
@@ -174,7 +174,7 @@ class DynamixelHandler : public rclcpp::Node {
             OVERLOAD          ,
             /*Indexの最大値*/_num_hw_err
         };
-        enum LimitIndex { // opt_limit_のIndex, 各種の制限値
+        enum LimitIndex { // limit_w/r_のIndex, 各種の制限値
             NONE = -1, // Indexには使わない特殊値
             TEMPERATURE_LIMIT ,
             MAX_VOLTAGE_LIMIT ,
@@ -187,7 +187,7 @@ class DynamixelHandler : public rclcpp::Node {
             MIN_POSITION_LIMIT,
             /*Indexの最大値*/_num_limit
         };
-        enum GainIndex { // opt_gain_のIndex, 各種のゲイン値
+        enum GainIndex { // gain_w/r_のIndex, 各種のゲイン値
             VELOCITY_I_GAIN     ,
             VELOCITY_P_GAIN     ,
             POSITION_D_GAIN     ,
@@ -206,21 +206,24 @@ class DynamixelHandler : public rclcpp::Node {
         static inline map<uint8_t, bool> tq_mode_;    // 各dynamixelの id と トルクON/OFF のマップ
         static inline map<uint8_t, uint8_t> op_mode_; // 各dynamixelの id と 制御モード のマップ
         static inline map<uint8_t, uint8_t> dv_mode_; // 各dynamixelの id と ドライブモード のマップ
-        static inline map<uint8_t, array<bool,   _num_hw_err     >> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
-        static inline map<uint8_t, array<double, _num_state_value>> state_values_;   // 各dynamixelの id と サーボから毎周期で読み込むことができる値のマップ, 中身の並びはStValueIndexに対応する
-        static inline map<uint8_t, array<double, _num_cmd_value  >> cmd_values_;     // 各dynamixelの id と サーボに毎周期で書き込むことができる値のマップ, 中身の並びはCmdValueIndexに対応する
-        static inline map<uint8_t, array<double ,_num_cmd_value  >> goal_values_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはCmdValueIndexに対応する
-        static inline map<uint8_t, array<double, _num_limit      >> limit_values_;   // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptLimitIndexに対応する 
-        static inline map<uint8_t, array<int64_t,_num_gain       >> gain_values_;    // 各dynamixelの id と サーボの各種制限値のマップ, 中身の並びはOptGainIndexに対応する 
+        static inline map<uint8_t, array<bool,   _num_hw_err   >> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
+        static inline map<uint8_t, array<double, _num_st_value >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
+        static inline map<uint8_t, array<double, _num_goal_value>> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
+        static inline map<uint8_t, array<double ,_num_goal_value>> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
+        static inline map<uint8_t, array<double, _num_limit    >> limit_w_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<double, _num_limit    >> limit_r_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<int64_t,_num_gain     >> gain_w_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<int64_t,_num_gain     >> gain_r_;    // 各dynamixelの id と サーボ
+
         // 上記の変数を適切に使うための補助的なフラグ
         static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ
-        static inline map<uint8_t, bool> is_cmd_updated_;       // topicのcallbackによって，cmd_valuesが更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_goal_updated_;       // topicのcallbackによって，cmd_valuesが更新されたかどうかを示すマップ
         static inline bool has_hardware_err_ = false; // 連結しているDynamixelのうち，どれか一つでもハードウェアエラーを起こしているかどうか
         // 各周期で実行するserial通信の内容を決めるためのset
-        static inline set<CmdValueIndex> list_write_cmd_ ;
+        static inline set<GoalValueIndex> list_write_goal_ ;
         static inline set<StValueIndex>  list_read_state_;
         // 複数周期で state を read するために使う．
-        static inline array<unsigned int, _num_state_value> multi_rate_read_ratio_pub_;
+    static inline array<unsigned int, _num_st_value> multi_rate_read_ratio_pub_;
 
         //* 単体通信を組み合わせた上位機能
         uint8_t ScanDynamixels(uint8_t id_min, uint8_t id_max, uint32_t num_expected, uint32_t time_retry_ms);
@@ -255,17 +258,17 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteBusWatchdog(uint8_t servo_id, double time);
         bool WriteGains(uint8_t servo_id, array<int64_t, _num_gain> gains);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
-        template <typename Addr=AddrCommon> void SyncWriteCommand(set<CmdValueIndex> list_wirte_cmd);
+        template <typename Addr=AddrCommon> void SyncWriteGoal(set<GoalValueIndex> list_write_goal);
         template <typename Addr=AddrCommon> void SyncWriteMode();  // todo 
         template <typename Addr=AddrCommon> void SyncWriteGain();  // todo 
         template <typename Addr=AddrCommon> void SyncWriteLimit(); // todo 
         template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
         template <typename Addr=AddrCommon> double SyncReadHardwareErrors();
+        template <typename Addr=AddrCommon> double SyncReadGoal();
         template <typename Addr=AddrCommon> double SyncReadMode(); 
         template <typename Addr=AddrCommon> double SyncReadGain(); 
         template <typename Addr=AddrCommon> double SyncReadLimit();
-        template <typename Addr=AddrCommon> double SyncReadGoal();
-        template <typename Addr=AddrCommon> void SyncStopDynamixels();
+        template <typename Addr=AddrCommon> void StopDynamixels();
 };
 
 // ちょっとした文字列の整形を行う補助関数

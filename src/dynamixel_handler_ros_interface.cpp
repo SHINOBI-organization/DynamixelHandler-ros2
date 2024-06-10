@@ -6,23 +6,23 @@ string update_info(const vector<uint8_t>& id_list, const string& what_updated) {
     return id_list_layout(id_list, string(header));
 }
 
-vector<uint8_t> store_cmd(
-    const vector<uint16_t>& id_list, const vector<double>& cmd_list, bool is_angle,
-    DynamixelHandler::CmdValueIndex cmd_index, 
+vector<uint8_t> store_goal(
+    const vector<uint16_t>& id_list, const vector<double>& value_list, bool is_angle,
+    DynamixelHandler::GoalValueIndex goal_index, 
     pair<DynamixelHandler::LimitIndex, DynamixelHandler::LimitIndex> lim_index
 ) {
     vector<uint8_t> store_id_list; 
-    if ( id_list.size() != cmd_list.size() ) return store_id_list;
+    if ( id_list.size() != value_list.size() ) return store_id_list;
     for (size_t i=0; i<id_list.size(); i++){
         uint8_t id = id_list[i];
-        auto value = is_angle ? deg2rad(cmd_list[i]) : cmd_list[i];
-        auto& limit = DynamixelHandler::limit_values_[id];
+        auto value = is_angle ? deg2rad(value_list[i]) : value_list[i];
+        auto& limit = DynamixelHandler::limit_r_[id];
         auto val_max = ( DynamixelHandler::NONE == lim_index.second ) ?  256*2*M_PI : limit[lim_index.second]; //このあたり一般性のない書き方していてキモい
         auto val_min = ( DynamixelHandler::NONE == lim_index.first  ) ? -256*2*M_PI :
                        (        lim_index.first == lim_index.second ) ?   - val_max : limit[lim_index.first];
-        DynamixelHandler::cmd_values_[id][cmd_index] = clamp( value, val_min, val_max );
-        DynamixelHandler::is_cmd_updated_[id] = true;
-        DynamixelHandler::list_write_cmd_.insert(cmd_index);
+        DynamixelHandler::goal_w_[id][goal_index] = clamp( value, val_min, val_max );
+        DynamixelHandler::is_goal_updated_[id] = true;
+        DynamixelHandler::list_write_goal_.insert(goal_index);
         store_id_list.push_back(id);
     }
     return store_id_list;
@@ -54,13 +54,13 @@ void DynamixelHandler::CallBackDxlCommand(const DynamixelCommand& msg) {
 
 void DynamixelHandler::CallBackDxlCmd_X_Position(const DynamixelCommandXControlPosition& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_POSITION);
-    vector<uint8_t> stored_pos = store_cmd( msg.id_list, msg.position_deg, true,
+    vector<uint8_t> stored_pos = store_goal( msg.id_list, msg.position_deg, true,
                                             GOAL_POSITION, {MIN_POSITION_LIMIT, MAX_POSITION_LIMIT} );
     if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position (x series)"));
-    vector<uint8_t> stored_pv = store_cmd(  msg.id_list, msg.profile_vel_deg_s, true,
+    vector<uint8_t> stored_pv = store_goal(  msg.id_list, msg.profile_vel_deg_s, true,
                                             PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity (x series)"));
-    vector<uint8_t> stored_pa = store_cmd(  msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (x series)"));
     if ( stored_pos.empty() && stored_pv.empty() && stored_pa.empty() ) 
@@ -69,10 +69,10 @@ void DynamixelHandler::CallBackDxlCmd_X_Position(const DynamixelCommandXControlP
 
 void DynamixelHandler::CallBackDxlCmd_X_Velocity(const DynamixelCommandXControlVelocity& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_VELOCITY);
-    vector<uint8_t> stored_vel = store_cmd( msg.id_list, msg.velocity_deg_s, true,
+    vector<uint8_t> stored_vel = store_goal( msg.id_list, msg.velocity_deg_s, true,
                                             GOAL_VELOCITY, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_vel.empty()) ROS_INFO_STREAM(update_info(stored_vel, "goal_velocity (x series)"));
-    vector<uint8_t> stored_p = store_cmd(   msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_p = store_goal(   msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_p.empty()) ROS_INFO_STREAM(update_info(stored_p, "profile_acceleration (x series)"));
     if ( stored_vel.empty() && stored_p.empty() ) 
@@ -81,7 +81,7 @@ void DynamixelHandler::CallBackDxlCmd_X_Velocity(const DynamixelCommandXControlV
 
 void DynamixelHandler::CallBackDxlCmd_X_Current(const DynamixelCommandXControlCurrent& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_CURRENT);
-    vector<uint8_t> stored_cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
                                             GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current (x series)"));
     if ( stored_cur.empty() ) ROS_ERROR("Element size all dismatch; skiped callback");
@@ -92,16 +92,16 @@ void DynamixelHandler::CallBackDxlCmd_X_CurrentPosition(const DynamixelCommandXC
     vector<double> ext_pos(max(msg.position_deg.size(), msg.rotation.size()), 0.0);
     for (size_t i=0; i<ext_pos.size(); i++) ext_pos[i] = (msg.position_deg.size() == ext_pos.size() ? msg.position_deg[i] : 0.0 )
                                                             + (msg.rotation.size() == ext_pos.size() ? msg.rotation[i]*360  : 0.0 );
-    vector<uint8_t> stored_pos = store_cmd(  msg.id_list, ext_pos, true,
+    vector<uint8_t> stored_pos = store_goal(  msg.id_list, ext_pos, true,
                                              GOAL_POSITION, {NONE, NONE} );
     if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position (x series)"));
-    vector<uint8_t> stored__cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored__cur = store_goal( msg.id_list, msg.current_ma, false,
                                              GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored__cur.empty()) ROS_INFO_STREAM(update_info(stored__cur, "goal_current (x series)"));
-    vector<uint8_t> stored_pv = store_cmd(   msg.id_list, msg.profile_vel_deg_s, true,
+    vector<uint8_t> stored_pv = store_goal(   msg.id_list, msg.profile_vel_deg_s, true,
                                              PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity (x series)"));
-    vector<uint8_t> stored_pa = store_cmd(   msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal(   msg.id_list, msg.profile_acc_deg_ss, true,
                                              PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (x series)"));
     if ( stored_pos.empty() && stored__cur.empty() && stored_pv.empty() && stored_pa.empty() ) 
@@ -113,13 +113,13 @@ void DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition(const DynamixelCommandX
     vector<double> ext_pos(max(msg.position_deg.size(), msg.rotation.size()), 0.0);
     for (size_t i=0; i<ext_pos.size(); i++) ext_pos[i] = (msg.position_deg.size() == ext_pos.size() ? msg.position_deg[i] : 0.0 )
                                                             + (msg.rotation.size() == ext_pos.size() ? msg.rotation[i]*360  : 0.0 );
-    vector<uint8_t> stored_pos = store_cmd( msg.id_list, ext_pos, true,
+    vector<uint8_t> stored_pos = store_goal( msg.id_list, ext_pos, true,
                                             GOAL_POSITION, {NONE, NONE} );
     if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position (x series)"));
-    vector<uint8_t> stored_pv = store_cmd( msg.id_list, msg.profile_vel_deg_s, true,
+    vector<uint8_t> stored_pv = store_goal( msg.id_list, msg.profile_vel_deg_s, true,
                                             PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity (x series)"));
-    vector<uint8_t> stored_pa = store_cmd( msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal( msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (x series)"));
     if ( stored_pos.empty() && stored_pv.empty() && stored_pa.empty() ) 
@@ -128,7 +128,7 @@ void DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition(const DynamixelCommandX
 
 void DynamixelHandler::CallBackDxlCmd_P_Current(const DynamixelCommandPControlCurrent& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_CURRENT);
-    vector<uint8_t> stored_cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
                                             GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current (p series)"));
     if ( stored_cur.empty() ) ROS_ERROR("Element size all dismatch; skiped callback");
@@ -136,13 +136,13 @@ void DynamixelHandler::CallBackDxlCmd_P_Current(const DynamixelCommandPControlCu
 
 void DynamixelHandler::CallBackDxlCmd_P_Velocity(const DynamixelCommandPControlVelocity& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_VELOCITY);
-    vector<uint8_t> stored_cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
                                             GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current (p series)"));
-    vector<uint8_t> stored_vel = store_cmd( msg.id_list, msg.velocity_deg_s, true,
+    vector<uint8_t> stored_vel = store_goal( msg.id_list, msg.velocity_deg_s, true,
                                             GOAL_VELOCITY, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_vel.empty()) ROS_INFO_STREAM(update_info(stored_vel, "goal_velocity (p series)"));
-    vector<uint8_t> stored_pa = store_cmd( msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal( msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_velocity (p series)"));
     if ( stored_cur.empty() && stored_vel.empty() && stored_pa.empty() )
@@ -151,19 +151,19 @@ void DynamixelHandler::CallBackDxlCmd_P_Velocity(const DynamixelCommandPControlV
 
 void DynamixelHandler::CallBackDxlCmd_P_Position(const DynamixelCommandPControlPosition& msg) {
     for ( const uint8_t id : msg.id_list ) ChangeOperatingMode(id, OPERATING_MODE_POSITION);
-    vector<uint8_t> stored_cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
                                             GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current (p series)"));
-    vector<uint8_t> stored_vel = store_cmd( msg.id_list, msg.velocity_deg_s, true,
+    vector<uint8_t> stored_vel = store_goal( msg.id_list, msg.velocity_deg_s, true,
                                             GOAL_VELOCITY, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_vel.empty()) ROS_INFO_STREAM(update_info(stored_vel, "goal_velocity (p series)"));
-    vector<uint8_t> stored_pos = store_cmd( msg.id_list, msg.position_deg, true,
+    vector<uint8_t> stored_pos = store_goal( msg.id_list, msg.position_deg, true,
                                             GOAL_POSITION, {MIN_POSITION_LIMIT, MAX_POSITION_LIMIT} );
     if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position (p series)"));
-    vector<uint8_t> stored_pv = store_cmd(  msg.id_list, msg.profile_vel_deg_s, true,
+    vector<uint8_t> stored_pv = store_goal(  msg.id_list, msg.profile_vel_deg_s, true,
                                             PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity (p series)"));
-    vector<uint8_t> stored_pa = store_cmd(  msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (p series)"));
     if ( stored_cur.empty() && stored_pos.empty() && stored_pv.empty() && stored_pa.empty() )
@@ -175,19 +175,19 @@ void DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition(const DynamixelCommandP
     vector<double> ext_pos(max(msg.position_deg.size(), msg.rotation.size()), 0.0);
     for (size_t i=0; i<ext_pos.size(); i++) ext_pos[i] = (msg.position_deg.size() == ext_pos.size() ? msg.position_deg[i] : 0.0 )
                                                             + (msg.rotation.size() == ext_pos.size() ? msg.rotation[i]*360  : 0.0 );
-    vector<uint8_t> stored_cur = store_cmd( msg.id_list, msg.current_ma, false,
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
                                             GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
     if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current (p series)"));
-    vector<uint8_t> stored_vel = store_cmd( msg.id_list, msg.velocity_deg_s, true,
+    vector<uint8_t> stored_vel = store_goal( msg.id_list, msg.velocity_deg_s, true,
                                             GOAL_VELOCITY, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_vel.empty()) ROS_INFO_STREAM(update_info(stored_vel, "goal_velocity (p series)"));
-    vector<uint8_t> stored_pos = store_cmd( msg.id_list, ext_pos, true,
+    vector<uint8_t> stored_pos = store_goal( msg.id_list, ext_pos, true,
                                             GOAL_POSITION, {NONE, NONE} );
     if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position (p series)"));
-    vector<uint8_t> stored_pv = store_cmd(  msg.id_list, msg.profile_vel_deg_s, true,
+    vector<uint8_t> stored_pv = store_goal(  msg.id_list, msg.profile_vel_deg_s, true,
                                             PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
     if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity (p series)"));
-    vector<uint8_t> stored_pa = store_cmd(  msg.id_list, msg.profile_acc_deg_ss, true,
+    vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (p series)"));
     if ( stored_cur.empty() && stored_pos.empty() && stored_pv.empty() && stored_pa.empty() )
@@ -254,7 +254,7 @@ double round4(double val) { return round(val*10000.0)/10000.0; }
 void DynamixelHandler::BroadcastDxlState(){
     DynamixelState msg;
     msg.stamp = this->get_clock()->now();
-    for (const auto& [id, value] : state_values_) {
+    for (const auto& [id, value] : state_r_) {
         msg.id_list.push_back(id);
         for (auto state : list_read_state_) switch(state) {
             case PRESENT_PWM:          msg.pwm_percent.push_back         (round4(value[state]    )); break;
@@ -287,7 +287,7 @@ void DynamixelHandler::BroadcastDxlError(){
 void DynamixelHandler::BroadcastDxlLimit(){
     DynamixelLimit msg;
     msg.stamp = this->get_clock()->now();
-    for (const auto& [id, limit] : limit_values_) {
+    for (const auto& [id, limit] : limit_r_) {
         msg.id_list.push_back(id);
         msg.temperature_limit_deg_c.push_back   (round4(limit[TEMPERATURE_LIMIT ]));
         msg.max_voltage_limit_v.push_back      (round4(limit[MAX_VOLTAGE_LIMIT ]));
@@ -305,7 +305,7 @@ void DynamixelHandler::BroadcastDxlLimit(){
 void DynamixelHandler::BroadcastDxlGain(){
     DynamixelGain msg;
     msg.stamp = this->get_clock()->now();
-    for ( const auto& [id, gain] : gain_values_ ) {
+    for ( const auto& [id, gain] : gain_r_ ) {
         msg.id_list.push_back(id);
         msg.velocity_i_gain_pulse.push_back     (gain[VELOCITY_I_GAIN     ]);
         msg.velocity_p_gain_pulse.push_back     (gain[VELOCITY_P_GAIN     ]);
@@ -341,7 +341,7 @@ void DynamixelHandler::BroadcastDxlMode(){
 void DynamixelHandler::BroadcastDxlGoal(){
     DynamixelGoal msg;
     msg.stamp = this->get_clock()->now();
-    for ( const auto& [id, goal] : goal_values_ ) {
+    for ( const auto& [id, goal] : goal_r_ ) {
         msg.id_list.push_back(id);
         msg.pwm_percent.push_back       (round4(goal[GOAL_PWM     ]));
         msg.current_ma.push_back        (round4(goal[GOAL_CURRENT ]));

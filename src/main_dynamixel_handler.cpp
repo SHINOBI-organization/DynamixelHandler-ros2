@@ -141,25 +141,22 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     }
 
     // 最初の一回は全ての情報をread & publish
-    ROS_INFO( " Reading present dynamixel state  ...");
-    // dyn_comm_.set_latency_timer(8);
-    while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(500); BroadcastDxlError(); ROS_INFO( "  ... error read done ");
-    while ( rclcpp::ok() && SyncReadLimit() < 1.0-1e-6 ) rsleep(500); BroadcastDxlLimit(); ROS_INFO( "  ... limit read done ");
-    while ( rclcpp::ok() && SyncReadGain()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  ROS_INFO( "  ... gain read done ");
-    while ( rclcpp::ok() && SyncReadMode()  < 1.0-1e-6 ) rsleep(500); BroadcastDxlMode();  ROS_INFO( "  ... mode read done ");
+    ROS_INFO( " Reading present dynamixel state  ...");                                             ROS_INFO( "   hardware error reading .. ");
+    while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(500); BroadcastDxlError(); ROS_INFO( "   limit values reading .. ");
+    while ( rclcpp::ok() && SyncReadLimit()          < 1.0-1e-6 ) rsleep(500); BroadcastDxlLimit(); ROS_INFO( "   gain values reading .. ");
+    while ( rclcpp::ok() && SyncReadGain()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  ROS_INFO( "   mode values reading .. ");
+    while ( rclcpp::ok() && SyncReadMode()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlMode();  
     // while ( ros::ok() && SyncReadConfig()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlConfig();
     // while ( ros::ok() && SyncReadExtra()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlExtra();
-    // dyn_comm_.set_latency_timer(latency_timer);
-    for (auto id : id_set_) {     // cmd_values_の内部の情報の初期化, cmd_values_は sync read する関数を持ってないので以下の様に手動で．
-        op_mode_[id] = ReadOperatingMode(id);
-        cmd_values_[id][GOAL_PWM]      = ReadGoalPWM(id);
-        cmd_values_[id][GOAL_CURRENT]  = ReadGoalCurrent(id);
-        cmd_values_[id][GOAL_VELOCITY] = ReadGoalVelocity(id);
-        cmd_values_[id][PROFILE_ACC]   = ReadProfileAcc(id);
-        cmd_values_[id][PROFILE_VEL]   = ReadProfileVel(id);
-        cmd_values_[id][GOAL_POSITION] = ReadGoalPosition(id);
-    } ROS_INFO( "  ... goal read done ");
-
+    for (auto id : id_set_) {     // goal_w_の内部の情報の初期化,
+        op_mode_[id] = ReadOperatingMode(id); // goal_r_をコピーする形に変更する
+        goal_w_[id][GOAL_PWM]      = ReadGoalPWM(id);
+        goal_w_[id][GOAL_CURRENT]  = ReadGoalCurrent(id);
+        goal_w_[id][GOAL_VELOCITY] = ReadGoalVelocity(id);
+        goal_w_[id][PROFILE_ACC]   = ReadProfileAcc(id);
+        goal_w_[id][PROFILE_VEL]   = ReadProfileVel(id);
+        goal_w_[id][GOAL_POSITION] = ReadGoalPosition(id);
+    } // gain_w_, limit_w_ についても同様に初期化する
     // 状態のreadの後にやるべき初期化
     ROS_INFO( " Initializing dynamixel state  ...");
     this->declare_parameter("init/hardware_error_auto_clean", true);
@@ -222,8 +219,8 @@ void DynamixelHandler::MainLoop(){
 
 /* 処理時間時間の計測 */ auto wstart = system_clock::now();
     //* topicをSubscribe & Dynamixelへ目標角をWrite
-    SyncWriteCommand(list_write_cmd_);
-    list_write_cmd_.clear();
+    SyncWriteGoal(list_write_goal_);
+    list_write_goal_.clear();
 /* 処理時間時間の計測 */ wtime += duration_cast<microseconds>(system_clock::now()-wstart).count() / 1000.0;
 
     //* 複数周期でstateをreadする場合の処理
@@ -293,7 +290,7 @@ DynamixelHandler::~DynamixelHandler(){
     this->declare_parameter("term/torque_auto_disable", true);
     bool do_torque_off  = get_parameter("term/torque_auto_disable").as_bool();
     if ( do_torque_off ) for ( auto id : id_set_ ) TorqueOff(id);
-    SyncStopDynamixels();
+    StopDynamixels();
     ROS_INFO( "  ... DynamixelHandler is terminated");
 }
 
