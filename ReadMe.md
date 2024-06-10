@@ -299,7 +299,8 @@ ros param `use/split_read` によって変更できる．
       use/fast_read: true # Fast Sync Readを使用するかどうか． falseにすると遅い
       use/split_read: false # 複数のアドレスからの読み込みを分割するか同時に行うか, trueだと遅い
       use/split_write: true # 複数のアドレスへの書き込みを分割するか同時に行うか, trueでもそんなに遅くならない
-    # Readする情報
+      use/multi_rate_read: false
+    # Readする情報, use/split_read=falseの時のみ有効
       read/present_pwm: false 
       read/present_current: true 
       read/present_velocity: true 
@@ -308,6 +309,15 @@ ros param `use/split_read` によって変更できる．
       read/position_trajectory: false 
       read/present_input_voltage: false 
       read/present_temperature: false
+    # 多周期でReadする情報, use/split_read=trueの時のみ有効
+      multi_rate_read/ratio/present_pwm:             0 # present_pwmを何周期に一回読むか
+      multi_rate_read/ratio/present_current:         1 # present_currentを何周期に一回読むか
+      multi_rate_read/ratio/present_velocity:        1 # present_velocityを何周期に一回読むか
+      multi_rate_read/ratio/present_position:        1 # present_positionを何周期に一回読むか
+      multi_rate_read/ratio/velocity_trajectory:     0 # velocity_trajectoryを何周期に一回読むか
+      multi_rate_read/ratio/position_trajectory:     0 # position_trajectoryを何周期に一回読むか
+      multi_rate_read/ratio/present_input_voltage:   10 # present_input_voltageを何周期に一回読むか
+      multi_rate_read/ratio/present_temperature:     10 # present_temperatureを何周期に一回読むか
     # デバッグ用
       max_log_width: 6 # 以下のlog出力で，サーボ何個ごとに改行を入れるか
       varbose/callback: false # コールバック関数の呼び出しを出力
