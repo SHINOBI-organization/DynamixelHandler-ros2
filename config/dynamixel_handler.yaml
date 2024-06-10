@@ -18,11 +18,13 @@
         init/torque_auto_enable: true # 初期化時に Torque を自動でONにするかどうか
         term/torque_auto_disable: true # 終了時に Torque を自動でOFFにするかどうか
     # ループの設定
-        loop_rate: 100
-        ratio/state_read: 1
-        ratio/option_read: 100
-        ratio/error_read: 100
-        ratio/varbose_loop: 100
+        ratio/read_state: 2
+        ratio/read_error: 10
+        ratio/read_limit: 300
+        ratio/read_gain: 300
+        ratio/read_mode: 300
+        ratio/read_goal: 20
+        ratio/varbose_loop: 300
     # Read/Write方式
         use/fast_read: false
         use/split_read: false
