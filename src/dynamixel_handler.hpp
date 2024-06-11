@@ -212,11 +212,18 @@ class DynamixelHandler : public rclcpp::Node {
 
         // 上記の変数を適切に使うための補助的なフラグ
         static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ
-        static inline map<uint8_t, bool> is_goal_updated_;       // topicのcallbackによって，cmd_valuesが更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_goal_updated_;       // topicのcallbackによって，goal_w_が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_gain_updated_;       // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_limit_updated_;       // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
         static inline bool has_hardware_err_ = false; // 連結しているDynamixelのうち，どれか一つでもハードウェアエラーを起こしているかどうか
         // 各周期で実行するserial通信の内容を決めるためのset
-        static inline set<GoalValueIndex> list_write_goal_ ;
-        static inline set<StValueIndex>  list_read_state_;
+        static inline set<GoalValueIndex> list_write_goal_;
+        static inline set<GainIndex>      list_write_gain_;
+        static inline set<LimitIndex>     list_write_limit_;
+        static inline set<StValueIndex>   list_read_state_ = {PRESENT_POSITION, PRESENT_VELOCITY, PRESENT_CURRENT, PRESENT_PWM, VELOCITY_TRAJECTORY, POSITION_TRAJECTORY, PRESENT_INPUT_VOLTAGE, PRESENT_TEMPERTURE};
+        static inline set<GoalValueIndex> list_read_goal_  = {GOAL_POSITION, GOAL_VELOCITY, GOAL_CURRENT, GOAL_PWM, PROFILE_ACC, PROFILE_VEL};
+        static inline set<GainIndex>      list_read_gain_  = {VELOCITY_I_GAIN, VELOCITY_P_GAIN, POSITION_D_GAIN, POSITION_I_GAIN, POSITION_P_GAIN, FEEDFORWARD_ACC_GAIN, FEEDFORWARD_VEL_GAIN};
+        static inline set<LimitIndex>     list_read_limit_ = {TEMPERATURE_LIMIT, MAX_VOLTAGE_LIMIT, MIN_VOLTAGE_LIMIT, PWM_LIMIT, CURRENT_LIMIT, ACCELERATION_LIMIT, VELOCITY_LIMIT, MAX_POSITION_LIMIT, MIN_POSITION_LIMIT};
         // 複数周期で state を read するために使う．
         static inline array<unsigned int, _num_state>    multi_rate_read_ratio_pub_;
 
@@ -255,13 +262,13 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteGains(uint8_t servo_id, array<int64_t, _num_gain> gains);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
         template <typename Addr=AddrCommon> void SyncWriteGoal(set<GoalValueIndex> list_write_goal);
-        template <typename Addr=AddrCommon> void SyncWriteGain();  // todo 
-        template <typename Addr=AddrCommon> void SyncWriteLimit(); // todo 
-        template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
+        template <typename Addr=AddrCommon> void SyncWriteGain (set<GainIndex> list_write_gain); 
+        template <typename Addr=AddrCommon> void SyncWriteLimit(set<LimitIndex> list_write_limit);
         template <typename Addr=AddrCommon> double SyncReadHardwareErrors();
-        template <typename Addr=AddrCommon> double SyncReadGoal();
-        template <typename Addr=AddrCommon> double SyncReadGain(); 
-        template <typename Addr=AddrCommon> double SyncReadLimit();
+        template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
+        template <typename Addr=AddrCommon> double SyncReadGoal(set<GoalValueIndex> list_read_goal);
+        template <typename Addr=AddrCommon> double SyncReadGain(set<GainIndex> list_read_gain); 
+        template <typename Addr=AddrCommon> double SyncReadLimit(set<LimitIndex> list_read_limit);
         template <typename Addr=AddrCommon> void StopDynamixels();
         template <typename Addr=AddrCommon> void CheckDynamixels();
 };

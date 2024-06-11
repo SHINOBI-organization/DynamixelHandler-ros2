@@ -114,16 +114,15 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
         sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1));
     }
     sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 4, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
+    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
     sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1));
     sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1));
-    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
 
     pub_state_     = create_publisher<DynamixelState>("dynamixel/state", 4);
     pub_error_     = create_publisher<DynamixelError>("dynamixel/error", 4);
+    pub_goal_  = create_publisher<DynamixelGoal> ("dynamixel/goal/r",  4);
     pub_gain_  = create_publisher<DynamixelGain> ("dynamixel/gain/r",  4);
     pub_limit_ = create_publisher<DynamixelLimit>("dynamixel/limit/r", 4);
-    pub_goal_  = create_publisher<DynamixelGoal> ("dynamixel/goal/r",  4);
-
 
     // 状態のreadの前にやるべき初期化
     this->declare_parameter("init/homing_offset", 0.0);
@@ -137,21 +136,27 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     }
 
     // 最初の一回は全ての情報をread & publish
-    ROS_INFO( " Reading present dynamixel state  ...");                                             ROS_INFO( "   hardware error reading .. ");
-    while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(500); BroadcastDxlError(); ROS_INFO( "   limit values reading .. ");
-    while ( rclcpp::ok() && SyncReadLimit()          < 1.0-1e-6 ) rsleep(500); BroadcastDxlLimit(); ROS_INFO( "   gain values reading .. ");
-    while ( rclcpp::ok() && SyncReadGain()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  
-    // while ( ros::ok() && SyncReadConfig()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlConfig();
-    // while ( ros::ok() && SyncReadExtra()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlExtra();
-    for (auto id : id_set_) {     // goal_w_の内部の情報の初期化,
-        op_mode_[id] = ReadOperatingMode(id); // goal_r_をコピーする形に変更する
-        goal_w_[id][GOAL_PWM]      = ReadGoalPWM(id);
-        goal_w_[id][GOAL_CURRENT]  = ReadGoalCurrent(id);
-        goal_w_[id][GOAL_VELOCITY] = ReadGoalVelocity(id);
-        goal_w_[id][PROFILE_ACC]   = ReadProfileAcc(id);
-        goal_w_[id][PROFILE_VEL]   = ReadProfileVel(id);
-        goal_w_[id][GOAL_POSITION] = ReadGoalPosition(id);
-    } // gain_w_, limit_w_ についても同様に初期化する
+    ROS_INFO(" Reading present dynamixel status  ...");  
+    ROS_INFO(" * state values reading .. "); while ( rclcpp::ok() && SyncReadState( list_read_state_ ) < 1.0-1e-6 ) rsleep(50);                                           
+    ROS_INFO(" * limit values reading .. "); while ( rclcpp::ok() && SyncReadLimit( list_read_limit_ ) < 1.0-1e-6 ) rsleep(50); 
+    for ( auto id : id_set_ ) limit_w_[id] = limit_r_[id];
+    ROS_INFO(" * gain values reading  .. "); while ( rclcpp::ok() && SyncReadGain( list_read_gain_ ) < 1.0-1e-6 ) rsleep(50); 
+    for ( auto id : id_set_ ) gain_w_[id] = gain_r_[id];
+    ROS_INFO(" * goal values reading  .. "); while ( rclcpp::ok() && SyncReadGoal( list_read_goal_ ) < 1.0-1e-6 ) rsleep(50); 
+    for ( auto id : id_set_ ) goal_w_[id] = goal_r_[id]; 
+    ROS_INFO(" * hardware error reading .. "); while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(50); // 最後にやる
+    for (auto id : id_set_) {
+        tq_mode_[id] = ReadTorqueEnable(id);
+        op_mode_[id] = ReadOperatingMode(id);
+        dv_mode_[id] = ReadDriveMode(id);
+    }
+    BroadcastDxlState();
+    BroadcastDxlLimit();
+    BroadcastDxlGain();  
+    BroadcastDxlGoal();   
+    BroadcastDxlError(); 
+    ROS_INFO("  ... status reading done");
+
     // 状態のreadの後にやるべき初期化
     ROS_INFO( " Initializing dynamixel state  ...");
     this->declare_parameter("init/hardware_error_auto_clean", true);
@@ -165,6 +170,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
 
     //  readする情報の設定
     if ( !use_multi_rate_read_ ) {
+        list_read_state_.clear();
         this->declare_parameter("read/present_pwm",           false);
         this->declare_parameter("read/present_current",        true);
         this->declare_parameter("read/present_velocity",       true);
@@ -216,6 +222,10 @@ void DynamixelHandler::MainLoop(){
     //* topicをSubscribe & Dynamixelへ目標角をWrite
     SyncWriteGoal(list_write_goal_);
     list_write_goal_.clear();
+    SyncWriteGain(list_write_gain_);
+    list_write_gain_.clear();
+    SyncWriteLimit(list_write_limit_);
+    list_write_limit_.clear();
 /* 処理時間時間の計測 */ wtime += duration_cast<microseconds>(system_clock::now()-wstart).count() / 1000.0;
 
     //* 複数周期でstateをreadする場合の処理
@@ -248,15 +258,15 @@ void DynamixelHandler::MainLoop(){
         if ( rate_suc_err>0.0) BroadcastDxlError();
     }
     if ( ratio_limit_pub_ && cnt % ratio_limit_pub_ == 0 ) { // ratio_limit_pub_
-        double rate_suc_lim = SyncReadLimit(); // 処理を追加する可能性を考えて，変数を別で用意する冗長な書き方をしている．
+        double rate_suc_lim = SyncReadLimit(list_read_limit_); // 処理を追加する可能性を考えて，変数を別で用意する冗長な書き方をしている．
         if ( rate_suc_lim >0.0 ) BroadcastDxlLimit();
     }
     if ( ratio_gain_pub_ && cnt % ratio_gain_pub_ == 0 ) { // ratio_gain_pub_
-        double rate_suc_gain = SyncReadGain();
+        double rate_suc_gain = SyncReadGain(list_read_gain_);
         if ( rate_suc_gain>0.0 ) BroadcastDxlGain();
     }
     if ( ratio_goal_pub_ && cnt % ratio_goal_pub_ == 0 ) { // ratio_goal_pub_
-        double rate_suc_goal = SyncReadGoal();
+        double rate_suc_goal = SyncReadGoal(list_read_goal_);
         if ( rate_suc_goal>0.0 ) BroadcastDxlGoal();
     }
 /* 処理時間時間の計測 */ rtime += duration_cast<microseconds>(system_clock::now()-rstart).count() / 1000.0;

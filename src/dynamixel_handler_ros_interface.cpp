@@ -194,59 +194,67 @@ void DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition(const DynamixelCommandP
         ROS_ERROR("Element size all dismatch; skiped callback");
 }
 
+void DynamixelHandler::CallBackDxlGoal(const DynamixelGoal& msg) {
+    vector<uint8_t> stored_pwm = store_goal( msg.id_list, msg.pwm_percent, false,
+                                            GOAL_PWM, {PWM_LIMIT, PWM_LIMIT} );
+    if (varbose_callback_ && !stored_pwm.empty()) ROS_INFO_STREAM(update_info(stored_pwm, "goal_pwm"));
+    vector<uint8_t> stored_cur = store_goal( msg.id_list, msg.current_ma, false,
+                                            GOAL_CURRENT, {CURRENT_LIMIT, CURRENT_LIMIT} );
+    if (varbose_callback_ && !stored_cur.empty()) ROS_INFO_STREAM(update_info(stored_cur, "goal_current"));
+    vector<uint8_t> stored_vel = store_goal( msg.id_list, msg.velocity_deg_s, true,
+                                            GOAL_VELOCITY, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
+    if (varbose_callback_ && !stored_vel.empty()) ROS_INFO_STREAM(update_info(stored_vel, "goal_velocity"));
+    vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
+                                            PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
+    if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration"));
+    vector<uint8_t> stored_pv = store_goal(  msg.id_list, msg.profile_vel_deg_s, true,
+                                            PROFILE_VEL, {VELOCITY_LIMIT, VELOCITY_LIMIT} );
+    if (varbose_callback_ && !stored_pv.empty()) ROS_INFO_STREAM(update_info(stored_pv, "profile_velocity"));
+    vector<uint8_t> stored_pos = store_goal( msg.id_list, msg.position_deg, true,
+                                            GOAL_POSITION, {MIN_POSITION_LIMIT, MAX_POSITION_LIMIT} );
+    if (varbose_callback_ && !stored_pos.empty()) ROS_INFO_STREAM(update_info(stored_pos, "goal_position"));
+    if (stored_pwm.empty() && stored_cur.empty() && stored_pos.empty() && stored_vel.empty() && stored_pv.empty() && stored_pa.empty() )
+        ROS_ERROR("Element size all dismatch; skiped callback");
+}
+
 void DynamixelHandler::CallBackDxlGain(const DynamixelGain& msg) {
-    // if (varbose_callback_) ROS_INFO("CallBackDxlGain");
-    bool is_any = false;
-    if (msg.id_list.size() == msg.velocity_i_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.velocity_p_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.position_d_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.position_i_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.position_p_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.feedforward_2nd_gain_pulse.size()){ is_any=true;}
-    if (msg.id_list.size() == msg.feedforward_1st_gain_pulse.size()){ is_any=true;}
-    if (varbose_callback_) {
-        //  if (is_any) ROS_INFO(" - %d servo(s) gain are updated", (int)msg.id_list.size());
-        //  else                  ROS_ERROR("Element size all dismatch; skiped callback");
-    }
 }
 
 void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
-    // if (varbose_callback_) ROS_INFO("CallBackDxlLimit");
-    bool is_any = false;
+    static const auto store_limit = [&](const vector<uint16_t>& id_list, const vector<double>& value_list, LimitIndex index, bool is_angle=false) {
+        if ( id_list.size() != value_list.size() ) return vector<uint8_t>();
+        vector<uint8_t> store_id_list;
+        for (size_t i=0; i<id_list.size(); i++) {
+            uint8_t id = id_list[i];
+            limit_w_[id][index] = is_angle ? deg2rad(value_list[i]) : value_list[i];
+            is_limit_updated_[id] = true;
+            list_write_limit_.insert(index);
+            store_id_list.push_back(id);
+        }
+        return store_id_list;
+    };
 
-    if (msg.id_list.size() == msg.temperature_limit_deg_c.size()  ){is_any=true;}
-    if (msg.id_list.size() == msg.max_voltage_limit_v.size()      ){is_any=true;}
-    if (msg.id_list.size() == msg.min_voltage_limit_v.size()      ){is_any=true;}
-    if (msg.id_list.size() == msg.pwm_limit_percent.size()        ){is_any=true;}
-    if (msg.id_list.size() == msg.current_limit_ma.size()         ){is_any=true;}
-    if (msg.id_list.size() == msg.acceleration_limit_deg_ss.size()){is_any=true;}
-    if (msg.id_list.size() == msg.velocity_limit_deg_s.size()     ){is_any=true;}
-    if (msg.id_list.size() == msg.max_position_limit_deg.size()   ){is_any=true;}
-    if (msg.id_list.size() == msg.min_position_limit_deg.size()   ){is_any=true;}
+    auto store_temp = store_limit(msg.id_list, msg.temperature_limit_deg_c, TEMPERATURE_LIMIT);
+    if (varbose_callback_ && !store_temp.empty()) ROS_INFO_STREAM(update_info(store_temp, "temperature limit"));
+    auto store_max_v = store_limit(msg.id_list, msg.max_voltage_limit_v, MAX_VOLTAGE_LIMIT);
+    if (varbose_callback_ && !store_max_v.empty()) ROS_INFO_STREAM(update_info(store_max_v, "max voltage limit"));
+    auto store_min_v = store_limit(msg.id_list, msg.min_voltage_limit_v, MIN_VOLTAGE_LIMIT);
+    if (varbose_callback_ && !store_min_v.empty()) ROS_INFO_STREAM(update_info(store_min_v, "min voltage limit"));
+    auto store_pwm = store_limit(msg.id_list, msg.pwm_limit_percent, PWM_LIMIT);
+    if (varbose_callback_ && !store_pwm.empty()) ROS_INFO_STREAM(update_info(store_pwm, "pwm limit"));
+    auto store_cur = store_limit(msg.id_list, msg.current_limit_ma, CURRENT_LIMIT);
+    if (varbose_callback_ && !store_cur.empty()) ROS_INFO_STREAM(update_info(store_cur, "current limit"));
+    auto store_acc = store_limit(msg.id_list, msg.acceleration_limit_deg_ss, ACCELERATION_LIMIT, true);
+    if (varbose_callback_ && !store_acc.empty()) ROS_INFO_STREAM(update_info(store_acc, "acceleration limit"));
+    auto store_vel = store_limit(msg.id_list, msg.velocity_limit_deg_s, VELOCITY_LIMIT, true);
+    if (varbose_callback_ && !store_vel.empty()) ROS_INFO_STREAM(update_info(store_vel, "velocity limit"));
+    auto store_max_p = store_limit(msg.id_list, msg.max_position_limit_deg, MAX_POSITION_LIMIT, true);
+    if (varbose_callback_ && !store_max_p.empty()) ROS_INFO_STREAM(update_info(store_max_p, "max position limit"));
+    auto store_min_p = store_limit(msg.id_list, msg.min_position_limit_deg, MIN_POSITION_LIMIT, true);
 
-    if (varbose_callback_) {
-        //  if (is_any) ROS_INFO(" - %d servo(s) limit are updated", (int)msg.id_list.size());
-        //  else                  ROS_ERROR("Element size all dismatch; skiped callback");
-    }
-}
-
-void DynamixelHandler::CallBackDxlMode(const DynamixelMode& msg) {
- 
-}
-
-void DynamixelHandler::CallBackDxlGoal(const DynamixelGoal& msg) {
-    // if (varbose_callback_) ROS_INFO("CallBackDxlGoal");
-    bool is_any = false;
-    if (msg.id_list.size() == msg.pwm_percent.size()      ){is_any=true;}
-    if (msg.id_list.size() == msg.current_ma.size()       ){is_any=true;}
-    if (msg.id_list.size() == msg.velocity_deg_s.size()   ){is_any=true;}
-    if (msg.id_list.size() == msg.profile_vel_deg_s.size()){is_any=true;}
-    if (msg.id_list.size() == msg.profile_acc_deg_ss.size()){is_any=true;}
-    if (msg.id_list.size() == msg.position_deg.size()     ){is_any=true;}
-    if (varbose_callback_) {
-        //  if (is_any) ROS_INFO(" - %d servo(s) goal are updated", (int)msg.id_list.size());
-        //  else                  ROS_ERROR("Element size all dismatch; skiped callback");
-    }
+    if ( store_temp.empty() && store_max_v.empty() && store_min_v.empty() && store_pwm.empty() && store_cur.empty() && 
+         store_acc.empty() && store_vel.empty() && store_max_p.empty() && store_min_p.empty() )
+        ROS_ERROR("Element size all dismatch; skiped callback");
 }
 
 double round4(double val) { return round(val*10000.0)/10000.0; }
