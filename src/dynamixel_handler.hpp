@@ -77,6 +77,7 @@ class DynamixelHandler : public rclcpp::Node {
         void BroadcastDxlState();
         void BroadcastDxlError();
         // void BroadcastDxlConfig(); // todo
+        // void BroadcastDxlExtra();  // todo
         void BroadcastDxlGoal(); 
         void BroadcastDxlLimit();
         void BroadcastDxlGain(); 
@@ -204,10 +205,10 @@ class DynamixelHandler : public rclcpp::Node {
         static inline map<uint8_t, array<double, _num_state >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
         static inline map<uint8_t, array<double, _num_goal  >> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
         static inline map<uint8_t, array<double ,_num_goal  >> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
-        static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボ
         static inline map<uint8_t, array<int64_t,_num_gain  >> gain_w_;    // 各dynamixelの id と サーボ
         static inline map<uint8_t, array<int64_t,_num_gain  >> gain_r_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボ
 
         // 上記の変数を適切に使うための補助的なフラグ
         static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ

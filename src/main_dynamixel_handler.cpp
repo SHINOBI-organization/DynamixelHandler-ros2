@@ -48,7 +48,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     this->declare_parameter("use/multi_rate_read", false);
     this->declare_parameter("varbose/callback",           false);
     this->declare_parameter("varbose/write_commad",       false);
-    this->declare_parameter("varbose/write_option",       false);
+    this->declare_parameter("varbose/write_options",       false);
     this->declare_parameter("varbose/read_state/raw",     false);
     this->declare_parameter("varbose/read_state/err",     false);
     this->declare_parameter("varbose/read_options/raw",    false);
@@ -68,7 +68,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     use_multi_rate_read_ = get_parameter("use/multi_rate_read").as_bool();
     varbose_callback_     = get_parameter("varbose/callback"           ).as_bool();
     varbose_write_cmd_    = get_parameter("varbose/write_commad"       ).as_bool();
-    varbose_write_opt_    = get_parameter("varbose/write_option"       ).as_bool();
+    varbose_write_opt_    = get_parameter("varbose/write_options"       ).as_bool();
     varbose_read_st_      = get_parameter("varbose/read_state/raw"     ).as_bool();
     varbose_read_st_err_  = get_parameter("varbose/read_state/err"     ).as_bool();
     varbose_read_opt_     = get_parameter("varbose/read_options/raw"    ).as_bool();

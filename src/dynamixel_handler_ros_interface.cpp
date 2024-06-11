@@ -42,7 +42,7 @@ void DynamixelHandler::CallBackDxlCommand(const DynamixelCommand& msg) {
         for (auto id : id_list) TorqueOn(id);
     if (msg.command == "torque_off"  || msg.command == "TOFF")
         for (auto id : id_list) TorqueOff(id);
-    if (msg.command == "remove"      || msg.command == "RM")
+    if (msg.command == "remove_id"   || msg.command == "RM")
         for (auto id : id_list) id_set_.erase( id );
     if (msg.command == "enable") 
         for (auto id : id_list) WriteTorqueEnable(id, true);
@@ -166,7 +166,7 @@ void DynamixelHandler::CallBackDxlCmd_P_Position(const DynamixelCommandPControlP
     vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (p series)"));
-    if ( stored_cur.empty() && stored_pos.empty() && stored_pv.empty() && stored_pa.empty() )
+    if ( stored_cur.empty() && stored_pos.empty() && stored_vel.empty() && stored_pv.empty() && stored_pa.empty() )
         ROS_ERROR("Element size all dismatch; skiped callback");
 }
 
@@ -190,7 +190,7 @@ void DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition(const DynamixelCommandP
     vector<uint8_t> stored_pa = store_goal(  msg.id_list, msg.profile_acc_deg_ss, true,
                                             PROFILE_ACC, {ACCELERATION_LIMIT, ACCELERATION_LIMIT} );
     if (varbose_callback_ && !stored_pa.empty()) ROS_INFO_STREAM(update_info(stored_pa, "profile_acceleration (p series)"));
-    if ( stored_cur.empty() && stored_pos.empty() && stored_pv.empty() && stored_pa.empty() )
+    if ( stored_cur.empty() && stored_pos.empty() && stored_vel.empty() && stored_pv.empty() && stored_pa.empty() )
         ROS_ERROR("Element size all dismatch; skiped callback");
 }
 

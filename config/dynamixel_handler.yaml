@@ -51,9 +51,9 @@
         max_log_width: 6
         varbose/callback: false
         varbose/write_commad: true
-        varbose/write_option: false
+        varbose/write_options: false
         varbose/read_state/raw: false
         varbose/read_state/err: false
-        varbose/read_option/raw: false
-        varbose/read_option/err: false
+        varbose/read_options/raw: false
+        varbose/read_options/err: false
         varbose/read_hardware_error: true

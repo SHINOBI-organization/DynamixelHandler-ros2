@@ -108,8 +108,8 @@ template <typename Addr> double DynamixelHandler::SyncReadState(set<StValueIndex
     const auto id_st_vec_map = ( use_fast_read_ ) // fast read を使うかどうか． 途中で切り替えるとtimeout後に来るデータによってSyncReadが何度も失敗するので注意
         ? dyn_comm_.SyncRead_fast(state_addr_list, target_id_list)
         : dyn_comm_.SyncRead     (state_addr_list, target_id_list); fflush(stdout);
-    const size_t N_total = target_id_list.size();
-    const size_t N_suc   = id_st_vec_map.size();
+    const int N_total = target_id_list.size();
+    const int N_suc   = id_st_vec_map.size();
     const bool is_timeout_  = dyn_comm_.timeout_last_read();
     const bool is_comm_err_ = dyn_comm_.comm_error_last_read();
     has_hardware_err_ = dyn_comm_.hardware_error_last_read();
@@ -117,21 +117,21 @@ template <typename Addr> double DynamixelHandler::SyncReadState(set<StValueIndex
     if ( varbose_read_st_err_ ) if ( is_timeout_ || is_comm_err_ ) {
         vector<uint8_t> failed_id_list;
         for ( auto id : target_id_list ) if ( id_st_vec_map.find(id) == id_st_vec_map.end() ) failed_id_list.push_back(id);
-        char header[99]; sprintf(header, "[%d] servo(s) failed to read", (int)(N_total - N_suc));
+        char header[99]; sprintf(header, "[%d] servo(s) failed to read", N_total - N_suc);
         auto ss = id_list_layout(failed_id_list, string(header)+( is_timeout_ ? " (time out)" : " (some kind packet error)"));
         ROS_WARN_STREAM(ss);
     }
     //* id_st_vec_mapの中身を確認
     if ( varbose_read_st_ ) if ( N_suc>0 ) {
-        char header[99]; sprintf(header, "[%d] servo(s) are read", (int)N_suc);
+        char header[99]; sprintf(header, "[%d] servo(s) are read", N_suc);
         auto ss = control_table_layout(width_log_, id_st_vec_map, state_addr_list, string(header));
         ROS_INFO_STREAM(ss);
         if ( has_hardware_err_ ) ROS_WARN( "Hardware Error are detected");
     }
     //* state_r_に反映
-    const int num_state_next = list_read_state.size();
-    const int num_state_now = *end-*start+1;
-    for (int i = 0; i < num_state_now; i++) {
+    const unsigned int num_state_now  = *end-*start+1;
+    const unsigned int num_state_next = list_read_state.size() - num_state_now;
+    for ( size_t i = 0; i < num_state_now; i++ ) {
         const auto addr = state_addr_list[i];
         for (const auto& [id, data_int] : id_st_vec_map)
             state_r_[id][*start+i] = addr.pulse2val( data_int[i], model_[id]);
