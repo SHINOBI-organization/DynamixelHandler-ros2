@@ -152,7 +152,7 @@ class DynamixelHandler : public rclcpp::Node {
             PROFILE_ACC  ,
             PROFILE_VEL  ,
             GOAL_POSITION,
-            /*Indexの最大値*/_num_goal_value
+            /*Indexの最大値*/_num_goal     
         };
         enum StValueIndex { // state_r_のIndex, サーボから毎周期で読み込むことができる値
             PRESENT_PWM          ,
@@ -163,8 +163,8 @@ class DynamixelHandler : public rclcpp::Node {
             POSITION_TRAJECTORY  ,
             PRESENT_INPUT_VOLTAGE,
             PRESENT_TEMPERTURE   ,
-            /*Indexの最大値*/_num_st_value
-        };
+            /*Indexの最大値*/_num_state
+           };
         enum HWErrIndex { // hardware_error_のIndex, サーボが起こしたハードウェアエラー
             INPUT_VOLTAGE     ,
             MOTOR_HALL_SENSOR ,
@@ -206,14 +206,14 @@ class DynamixelHandler : public rclcpp::Node {
         static inline map<uint8_t, bool> tq_mode_;    // 各dynamixelの id と トルクON/OFF のマップ
         static inline map<uint8_t, uint8_t> op_mode_; // 各dynamixelの id と 制御モード のマップ
         static inline map<uint8_t, uint8_t> dv_mode_; // 各dynamixelの id と ドライブモード のマップ
-        static inline map<uint8_t, array<bool,   _num_hw_err   >> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
-        static inline map<uint8_t, array<double, _num_st_value >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
-        static inline map<uint8_t, array<double, _num_goal_value>> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
-        static inline map<uint8_t, array<double ,_num_goal_value>> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
-        static inline map<uint8_t, array<double, _num_limit    >> limit_w_;   // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<double, _num_limit    >> limit_r_;   // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<int64_t,_num_gain     >> gain_w_;    // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<int64_t,_num_gain     >> gain_r_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<bool,   _num_hw_err>> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
+        static inline map<uint8_t, array<double, _num_state >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
+        static inline map<uint8_t, array<double, _num_goal  >> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
+        static inline map<uint8_t, array<double ,_num_goal  >> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
+        static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<int64_t,_num_gain  >> gain_w_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<int64_t,_num_gain  >> gain_r_;    // 各dynamixelの id と サーボ
 
         // 上記の変数を適切に使うための補助的なフラグ
         static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ
@@ -223,7 +223,7 @@ class DynamixelHandler : public rclcpp::Node {
         static inline set<GoalValueIndex> list_write_goal_ ;
         static inline set<StValueIndex>  list_read_state_;
         // 複数周期で state を read するために使う．
-    static inline array<unsigned int, _num_st_value> multi_rate_read_ratio_pub_;
+        static inline array<unsigned int, _num_state>    multi_rate_read_ratio_pub_;
 
         //* 単体通信を組み合わせた上位機能
         uint8_t ScanDynamixels(uint8_t id_min, uint8_t id_max, uint32_t num_expected, uint32_t time_retry_ms);
