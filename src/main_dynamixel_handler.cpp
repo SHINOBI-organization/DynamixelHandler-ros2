@@ -18,7 +18,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     dyn_comm_ = DynamixelCommunicator(device_name.c_str(), baudrate, latency_timer); fflush(stdout); // printfのバッファを吐き出す． これがないと printfの表示が遅延する
     if ( !dyn_comm_.OpenPort() ) {
         ROS_ERROR("Failed to open USB device [%s]", dyn_comm_.port_name().c_str()); 
-        throw std::runtime_error("Initialization failed");
+        throw std::runtime_error("Initialization failed (device open)");
     } 
 
     // serial通信のvarbose設定
@@ -93,15 +93,15 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     auto num_found = ScanDynamixels(id_min, id_max, num_expexted, times_retry);
     if( num_found==0 ) { // 見つからなかった場合は初期化失敗で終了
         ROS_ERROR("Dynamixel is not found in USB device [%s]", dyn_comm_.port_name().c_str());
-        throw std::runtime_error("Initialization failed");
+        throw std::runtime_error("Initialization failed (no dynamixel found)");
     }
     if( num_expexted>0 && num_expexted!=num_found ) { // 期待数が設定されているときに、見つかった数が期待数と異なる場合は初期化失敗で終了
         ROS_ERROR("Number of Dynamixel is not matched. Expected [%d], but found [%d]. please check & retry", num_expexted, num_found);
-        throw std::runtime_error("Initialization failed");
+        throw std::runtime_error("Initialization failed (number of dynamixel is not matched)");
     }
     ROS_INFO("  ... Finish scanning Dynamixel");
 
-        // Subscriber / Publisherの設定
+    // Subscriber / Publisherの設定
     if ( num_[SERIES_X] > 0 ) {
         sub_cmd_x_pos_  = create_subscription<DynamixelCommandXControlPosition>        ("dynamixel/x_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Position, this, _1));
         sub_cmd_x_vel_  = create_subscription<DynamixelCommandXControlVelocity>        ("dynamixel/x_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Velocity, this, _1));
