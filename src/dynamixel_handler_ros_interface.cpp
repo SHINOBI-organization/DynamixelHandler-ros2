@@ -218,6 +218,38 @@ void DynamixelHandler::CallBackDxlGoal(const DynamixelGoal& msg) {
 }
 
 void DynamixelHandler::CallBackDxlGain(const DynamixelGain& msg) {
+    static const auto store_gain = [&](const vector<uint16_t>& id_list, const vector<uint16_t>& value_list, GainIndex index) {
+        if ( id_list.size() != value_list.size() ) return vector<uint8_t>();
+        vector<uint8_t> store_id_list;
+        for (size_t i=0; i<id_list.size(); i++) {
+            uint8_t id = id_list[i];
+            gain_w_[id][index] = value_list[i];
+            is_gain_updated_[id] = true;
+            list_write_gain_.insert(index);
+            store_id_list.push_back(id);
+        }
+        return store_id_list;
+    };
+ 
+    auto store_vi = store_gain(msg.id_list, msg.velocity_i_gain_pulse, VELOCITY_I_GAIN);
+    if (varbose_callback_ && !store_vi.empty()) ROS_INFO_STREAM(update_info(store_vi, "velocity i gain"));
+    auto store_vp = store_gain(msg.id_list, msg.velocity_p_gain_pulse, VELOCITY_P_GAIN);
+    if (varbose_callback_ && !store_vp.empty()) ROS_INFO_STREAM(update_info(store_vp, "velocity p gain"));
+    auto store_pd = store_gain(msg.id_list, msg.position_d_gain_pulse, POSITION_D_GAIN);
+    if (varbose_callback_ && !store_pd.empty()) ROS_INFO_STREAM(update_info(store_pd, "position d gain"));
+    auto store_pi = store_gain(msg.id_list, msg.position_i_gain_pulse, POSITION_I_GAIN);
+    if (varbose_callback_ && !store_pi.empty()) ROS_INFO_STREAM(update_info(store_pi, "position i gain"));
+    auto store_pp = store_gain(msg.id_list, msg.position_p_gain_pulse, POSITION_P_GAIN);
+    if (varbose_callback_ && !store_pp.empty()) ROS_INFO_STREAM(update_info(store_pp, "position p gain"));
+    auto store_fa = store_gain(msg.id_list, msg.feedforward_2nd_gain_pulse, FEEDFORWARD_ACC_GAIN);
+    if (varbose_callback_ && !store_fa.empty()) ROS_INFO_STREAM(update_info(store_fa, "feedforward 2nd gain"));
+    auto store_fv = store_gain(msg.id_list, msg.feedforward_1st_gain_pulse, FEEDFORWARD_VEL_GAIN);
+    if (varbose_callback_ && !store_fv.empty()) ROS_INFO_STREAM(update_info(store_fv, "feedforward 1st gain"));
+
+    if ( store_vi.empty() && store_vp.empty() && 
+         store_pd.empty() && store_pi.empty() && store_pp.empty() && 
+         store_fa.empty() && store_fv.empty() )
+        ROS_ERROR("Element size all dismatch; skiped callback");
 }
 
 void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
@@ -307,7 +339,7 @@ void DynamixelHandler::BroadcastDxlLimit(){
     msg.stamp = this->get_clock()->now();
     for (const auto& [id, limit] : limit_r_) {
         msg.id_list.push_back(id);
-        msg.temperature_limit_deg_c.push_back   (round4(limit[TEMPERATURE_LIMIT ]));
+        msg.temperature_limit_deg_c.push_back  (round4(limit[TEMPERATURE_LIMIT ]));
         msg.max_voltage_limit_v.push_back      (round4(limit[MAX_VOLTAGE_LIMIT ]));
         msg.min_voltage_limit_v.push_back      (round4(limit[MIN_VOLTAGE_LIMIT ]));
         msg.pwm_limit_percent.push_back        (round4(limit[PWM_LIMIT         ]));

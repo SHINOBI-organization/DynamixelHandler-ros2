@@ -271,7 +271,7 @@ bool DynamixelHandler::WriteBusWatchdog(uint8_t id, double time){
     return dyn_comm_.tryWrite(addr, id, addr.val2pulse(time, model_[id]));
 }
 
-bool DynamixelHandler::WriteGains(uint8_t id, array<int64_t, _num_gain> gains){
+bool DynamixelHandler::WriteGains(uint8_t id, array<uint16_t, _num_gain> gains){
     bool is_success = true;
     if ( series_[id] != SERIES_X ) {
         is_success &= dyn_comm_.tryWrite(AddrX::velocity_i_gain, id, gains[VELOCITY_I_GAIN]);

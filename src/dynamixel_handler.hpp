@@ -205,8 +205,8 @@ class DynamixelHandler : public rclcpp::Node {
         static inline map<uint8_t, array<double, _num_state >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
         static inline map<uint8_t, array<double, _num_goal  >> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
         static inline map<uint8_t, array<double ,_num_goal  >> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
-        static inline map<uint8_t, array<int64_t,_num_gain  >> gain_w_;    // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<int64_t,_num_gain  >> gain_r_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<uint16_t,_num_gain  >> gain_w_;    // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<uint16_t,_num_gain  >> gain_r_;    // 各dynamixelの id と サーボ
         static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボ
         static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボ
 
@@ -259,7 +259,7 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteHomingOffset(uint8_t servo_id, double offset);
         bool WriteOperatingMode(uint8_t servo_id, uint8_t mode);
         bool WriteBusWatchdog(uint8_t servo_id, double time);
-        bool WriteGains(uint8_t servo_id, array<int64_t, _num_gain> gains);
+        bool WriteGains(uint8_t servo_id, array<uint16_t, _num_gain> gains);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
         template <typename Addr=AddrCommon> void SyncWriteGoal(set<GoalValueIndex> list_write_goal);
         template <typename Addr=AddrCommon> void SyncWriteGain (set<GainIndex> list_write_gain); 

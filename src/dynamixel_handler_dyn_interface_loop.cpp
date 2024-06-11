@@ -288,7 +288,7 @@ template <typename Addr> double DynamixelHandler::SyncReadGain(set<GainIndex> li
     if ( list_read_gain.empty() ) return 1.0; // 空なら即時return
     //* 読み込む範囲のgain_addr_listのインデックスを取得
     auto [start, end] = minmax_element(list_read_gain.begin(), list_read_gain.end());
-    if ( use_split_read_ || true ) end = start; // 分割読み込みを常に有効にする．
+    if ( use_split_read_ ) end = start; // 分割読み込みを常に有効にする．
     //* 読み込みに必要な変数を用意
     vector<DynamixelAddress> gain_addr_list;
     for (GainIndex g=*start; g<=*end; g++) switch ( g ) {
@@ -333,7 +333,7 @@ template <typename Addr> double DynamixelHandler::SyncReadGain(set<GainIndex> li
     for ( size_t i = 0; i < num_gain_now; i++ ) { 
         DynamixelAddress addr = gain_addr_list[i];
         for (const auto& [id, data_int] : id_gain_vec_map)
-            gain_r_[id][i] = addr.pulse2val( data_int[i], model_[id] );
+            gain_r_[id][*start+i] = static_cast<uint16_t>( addr.pulse2val( data_int[i], model_[id] ) ); // pulse2valはdoubleを返すので，uint16_tにキャスト
     }
     // 今回読み込んだ範囲を消去して残りを再帰的に処理, 
     list_read_gain.erase(start, ++end); // 今回読み込んだ範囲を消去
@@ -416,7 +416,7 @@ template <typename Addr> double DynamixelHandler::SyncReadLimit(set<LimitIndex> 
     for ( size_t i = 0; i < num_limit_now; i++ ) {
         DynamixelAddress addr = limit_addr_list[i];
         for (const auto& [id, data_int] : id_limit_vec_map)
-            limit_r_[id][i] = addr.pulse2val( data_int[i], model_[id] );
+            limit_r_[id][*start+i] = addr.pulse2val( data_int[i], model_[id] );
     }
     // 今回読み込んだ範囲を消去して残りを再帰的に処理,
     list_read_limit.erase(start, ++end); // 今回読み込んだ範囲を消去
@@ -482,7 +482,7 @@ template <typename Addr> double DynamixelHandler::SyncReadGoal(set<GoalValueInde
     for ( size_t i = 0; i < num_goal_now; i++) {
         DynamixelAddress addr = goal_addr_list[i];
         for (const auto& [id, data_int] : id_goal_vec_map)
-            goal_r_[id][i] = addr.pulse2val( data_int[i], model_[id] );
+            goal_r_[id][*start+i] = addr.pulse2val( data_int[i], model_[id] );
     }
     // 今回読み込んだ範囲を消去して残りを再帰的に処理, 
     list_read_goal.erase(start, ++end); // 今回読み込んだ範囲を消去
