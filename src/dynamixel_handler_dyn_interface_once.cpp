@@ -209,8 +209,11 @@ double DynamixelHandler::ReadHomingOffset(uint8_t id){
 }
 
 uint8_t DynamixelHandler::ReadOperatingMode(uint8_t id){
-    return series_[id]==SERIES_X ? dyn_comm_.tryRead(AddrX::operating_mode, id) 
-          :series_[id]==SERIES_P ? dyn_comm_.tryRead(AddrP::operating_mode, id) : 0;
+    return dyn_comm_.tryRead(AddrCommon::operating_mode, id);
+}
+
+uint8_t DynamixelHandler::ReadDriveMode(uint8_t id){
+    return dyn_comm_.tryRead(AddrCommon::drive_mode, id);
 }
 
 //* 基本機能たち Write
@@ -262,12 +265,6 @@ bool DynamixelHandler::WriteHomingOffset(uint8_t id, double offset){
                :series_[id]==SERIES_P ? AddrP::homing_offset : AddrX::homing_offset;
     return dyn_comm_.tryWrite(addr, id, addr.val2pulse(offset, model_[id]));
 }
-
-bool DynamixelHandler::WriteOperatingMode(uint8_t id, uint8_t mode){ 
-    return series_[id]==SERIES_X ? dyn_comm_.tryWrite(AddrX::operating_mode, id, mode) 
-          :series_[id]==SERIES_P ? dyn_comm_.tryWrite(AddrP::operating_mode, id, mode) : false;
-}
-
 bool DynamixelHandler::WriteBusWatchdog(uint8_t id, double time){
     auto addr = series_[id]==SERIES_X ? AddrX::bus_watchdog
                :series_[id]==SERIES_P ? AddrP::bus_watchdog : AddrX::bus_watchdog;
@@ -294,4 +291,8 @@ bool DynamixelHandler::WriteGains(uint8_t id, array<int64_t, _num_gain> gains){
         is_success &= dyn_comm_.tryWrite(AddrP::feedforward_1st_gain, id, gains[FEEDFORWARD_VEL_GAIN]);
     } else { is_success = false; }
     return is_success;
+}
+
+bool DynamixelHandler::WriteOperatingMode(uint8_t id, uint8_t mode){ 
+    return dyn_comm_.tryWrite(AddrCommon::operating_mode, id, mode);
 }

@@ -1,4 +1,7 @@
 builtin_interfaces/Time stamp
+
+dynamixel_handler/DynamixelOptionMode status
+
 uint16[] id_list
 
 float64[] pwm_percent

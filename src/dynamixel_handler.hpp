@@ -12,7 +12,6 @@
 #include "dynamixel_handler/msg/dynamixel_extra.hpp"
 #include "dynamixel_handler/msg/dynamixel_gain.hpp"
 #include "dynamixel_handler/msg/dynamixel_limit.hpp"
-#include "dynamixel_handler/msg/dynamixel_mode.hpp"
 #include "dynamixel_handler/msg/dynamixel_goal.hpp"
 #include "dynamixel_handler/msg/dynamixel_command.hpp"
 #include "dynamixel_handler/msg/dynamixel_command_x_control_position.hpp"
@@ -81,10 +80,8 @@ class DynamixelHandler : public rclcpp::Node {
         void BroadcastDxlGoal(); 
         void BroadcastDxlLimit();
         void BroadcastDxlGain(); 
-        void BroadcastDxlMode(); 
         void CallBackDxlLimit (const DynamixelLimit& msg); // todo
         void CallBackDxlGain  (const DynamixelGain& msg);  // todo
-        void CallBackDxlMode  (const DynamixelMode& msg);  // todo
         void CallBackDxlGoal  (const DynamixelGoal& msg);  // todo
         void CallBackDxlCommand               (const DynamixelCommand& msg);    // todo
         void CallBackDxlCmd_X_Position        (const DynamixelCommandXControlPosition& msg);
@@ -100,23 +97,21 @@ class DynamixelHandler : public rclcpp::Node {
         rclcpp::Publisher<DynamixelState>::SharedPtr pub_state_;
         rclcpp::Publisher<DynamixelError>::SharedPtr pub_error_;
         rclcpp::Publisher<DynamixelLimit>::SharedPtr pub_limit_;
-        rclcpp::Publisher<DynamixelGain>::SharedPtr pub_gain_;
-        rclcpp::Publisher<DynamixelMode>::SharedPtr pub_mode_;
-        rclcpp::Publisher<DynamixelGoal>::SharedPtr pub_goal_;
+        rclcpp::Publisher<DynamixelGain>::SharedPtr  pub_gain_;
+        rclcpp::Publisher<DynamixelGoal>::SharedPtr  pub_goal_;
         rclcpp::Subscription<DynamixelCommand>::SharedPtr sub_command_;
-        rclcpp::Subscription<DynamixelCommandXControlPosition>::SharedPtr sub_cmd_x_pos_;
-        rclcpp::Subscription<DynamixelCommandXControlVelocity>::SharedPtr sub_cmd_x_vel_;
-        rclcpp::Subscription<DynamixelCommandXControlCurrent>::SharedPtr sub_cmd_x_cur_;
-        rclcpp::Subscription<DynamixelCommandXControlCurrentPosition>::SharedPtr sub_cmd_x_cpos_;
+        rclcpp::Subscription<DynamixelCommandXControlPosition>::SharedPtr         sub_cmd_x_pos_;
+        rclcpp::Subscription<DynamixelCommandXControlVelocity>::SharedPtr         sub_cmd_x_vel_;
+        rclcpp::Subscription<DynamixelCommandXControlCurrent>::SharedPtr          sub_cmd_x_cur_;
+        rclcpp::Subscription<DynamixelCommandXControlCurrentPosition>::SharedPtr  sub_cmd_x_cpos_;
         rclcpp::Subscription<DynamixelCommandXControlExtendedPosition>::SharedPtr sub_cmd_x_epos_;
-        rclcpp::Subscription<DynamixelCommandPControlPosition>::SharedPtr sub_cmd_p_pos_;
-        rclcpp::Subscription<DynamixelCommandPControlVelocity>::SharedPtr sub_cmd_p_vel_;
-        rclcpp::Subscription<DynamixelCommandPControlCurrent>::SharedPtr sub_cmd_p_cur_;
+        rclcpp::Subscription<DynamixelCommandPControlPosition>::SharedPtr         sub_cmd_p_pos_;
+        rclcpp::Subscription<DynamixelCommandPControlVelocity>::SharedPtr         sub_cmd_p_vel_;
+        rclcpp::Subscription<DynamixelCommandPControlCurrent>::SharedPtr          sub_cmd_p_cur_;
         rclcpp::Subscription<DynamixelCommandPControlExtendedPosition>::SharedPtr sub_cmd_p_epos_;
-        rclcpp::Subscription<DynamixelGain>::SharedPtr sub_gain_;
-        rclcpp::Subscription<DynamixelMode>::SharedPtr sub_mode_;
+        rclcpp::Subscription<DynamixelGain>::SharedPtr  sub_gain_;
         rclcpp::Subscription<DynamixelLimit>::SharedPtr sub_limit_;
-        rclcpp::Subscription<DynamixelGoal>::SharedPtr sub_goal_;
+        rclcpp::Subscription<DynamixelGoal>::SharedPtr  sub_goal_;
   
         //* 各種のフラグとパラメータ
         unsigned int loop_rate_ = 50;
@@ -124,7 +119,6 @@ class DynamixelHandler : public rclcpp::Node {
         unsigned int ratio_error_pub_  = 100; // 0の時は初回のみ
         unsigned int ratio_limit_pub_  = 100; // 0の時は初回のみ
         unsigned int ratio_gain_pub_   = 100; // 0の時は初回のみ
-        unsigned int ratio_mode_pub_   = 100; // 0の時は初回のみ
         unsigned int ratio_goal_pub_   = 100; // 0の時は初回のみ
         unsigned int ratio_mainloop_   = 100; // 0の時は初回のみ
         unsigned int width_log_ = 7;
@@ -246,6 +240,7 @@ class DynamixelHandler : public rclcpp::Node {
         double  ReadProfileVel(uint8_t servo_id);
         double  ReadHomingOffset(uint8_t servo_id);
         uint8_t ReadOperatingMode(uint8_t servo_id);
+        uint8_t ReadDriveMode(uint8_t servo_id);
         bool WriteTorqueEnable(uint8_t servo_id, bool enable);
         bool WriteGoalPWM(uint8_t servo_id, double pwm);
         bool WriteGoalCurrent(uint8_t servo_id, double current);
@@ -259,16 +254,15 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteGains(uint8_t servo_id, array<int64_t, _num_gain> gains);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
         template <typename Addr=AddrCommon> void SyncWriteGoal(set<GoalValueIndex> list_write_goal);
-        template <typename Addr=AddrCommon> void SyncWriteMode();  // todo 
         template <typename Addr=AddrCommon> void SyncWriteGain();  // todo 
         template <typename Addr=AddrCommon> void SyncWriteLimit(); // todo 
         template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
         template <typename Addr=AddrCommon> double SyncReadHardwareErrors();
         template <typename Addr=AddrCommon> double SyncReadGoal();
-        template <typename Addr=AddrCommon> double SyncReadMode(); 
         template <typename Addr=AddrCommon> double SyncReadGain(); 
         template <typename Addr=AddrCommon> double SyncReadLimit();
         template <typename Addr=AddrCommon> void StopDynamixels();
+        template <typename Addr=AddrCommon> void CheckDynamixels();
 };
 
 // ちょっとした文字列の整形を行う補助関数

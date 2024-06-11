@@ -39,7 +39,6 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     this->declare_parameter("ratio/read_error",   100);
     this->declare_parameter("ratio/read_limit",    0);
     this->declare_parameter("ratio/read_gain",     0);
-    this->declare_parameter("ratio/read_mode",     0);
     this->declare_parameter("ratio/read_goal",     0);
     this->declare_parameter("ratio/varbose_loop", 100);
     this->declare_parameter("max_log_width",        7);
@@ -60,7 +59,6 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     ratio_error_pub_  = get_parameter("ratio/read_error"  ).as_int();
     ratio_limit_pub_  = get_parameter("ratio/read_limit"  ).as_int();
     ratio_gain_pub_   = get_parameter("ratio/read_gain"   ).as_int();
-    ratio_mode_pub_   = get_parameter("ratio/read_mode"   ).as_int();
     ratio_goal_pub_   = get_parameter("ratio/read_goal"   ).as_int();
     ratio_mainloop_   = get_parameter("ratio/varbose_loop").as_int();
     width_log_        = get_parameter("max_log_width"     ).as_int();
@@ -117,14 +115,12 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     }
     sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 4, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
     sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1));
-    sub_mode_ = create_subscription<DynamixelMode> ("dynamixel/mode/w", 4, bind(&DynamixelHandler::CallBackDxlMode, this, _1));
     sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1));
     sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
 
     pub_state_     = create_publisher<DynamixelState>("dynamixel/state", 4);
     pub_error_     = create_publisher<DynamixelError>("dynamixel/error", 4);
     pub_gain_  = create_publisher<DynamixelGain> ("dynamixel/gain/r",  4);
-    pub_mode_  = create_publisher<DynamixelMode> ("dynamixel/mode/r",  4);
     pub_limit_ = create_publisher<DynamixelLimit>("dynamixel/limit/r", 4);
     pub_goal_  = create_publisher<DynamixelGoal> ("dynamixel/goal/r",  4);
 
@@ -144,8 +140,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     ROS_INFO( " Reading present dynamixel state  ...");                                             ROS_INFO( "   hardware error reading .. ");
     while ( rclcpp::ok() && SyncReadHardwareErrors() < 1.0-1e-6 ) rsleep(500); BroadcastDxlError(); ROS_INFO( "   limit values reading .. ");
     while ( rclcpp::ok() && SyncReadLimit()          < 1.0-1e-6 ) rsleep(500); BroadcastDxlLimit(); ROS_INFO( "   gain values reading .. ");
-    while ( rclcpp::ok() && SyncReadGain()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  ROS_INFO( "   mode values reading .. ");
-    while ( rclcpp::ok() && SyncReadMode()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlMode();  
+    while ( rclcpp::ok() && SyncReadGain()           < 1.0-1e-6 ) rsleep(500); BroadcastDxlGain();  
     // while ( ros::ok() && SyncReadConfig()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlConfig();
     // while ( ros::ok() && SyncReadExtra()  < 1.0-1e-6 ) rsleep(0.05); BroadcastDxlExtra();
     for (auto id : id_set_) {     // goal_w_の内部の情報の初期化,
@@ -238,6 +233,7 @@ void DynamixelHandler::MainLoop(){
     }
 
 /* 処理時間時間の計測 */ auto rstart = system_clock::now();
+    if ( ratio_state_pub_ && cnt % (100*ratio_state_pub_) == 0 ) CheckDynamixels(); // トルクが入っているか確認
     //* Dynamixelから状態Read & topicをPublish
     if ( !list_read_state_.empty() ) // list_read_state_が空でない場合のみ実行
     if ( ratio_state_pub_ && cnt % ratio_state_pub_ == 0 ) {// ratio_state_pub_の割合で実行
@@ -258,10 +254,6 @@ void DynamixelHandler::MainLoop(){
     if ( ratio_gain_pub_ && cnt % ratio_gain_pub_ == 0 ) { // ratio_gain_pub_
         double rate_suc_gain = SyncReadGain();
         if ( rate_suc_gain>0.0 ) BroadcastDxlGain();
-    }
-    if ( ratio_mode_pub_ && cnt % ratio_mode_pub_ == 0 ) { // ratio_mode_pub_
-        double rate_suc_mode = SyncReadMode();
-        if ( rate_suc_mode>0.0 ) BroadcastDxlMode();
     }
     if ( ratio_goal_pub_ && cnt % ratio_goal_pub_ == 0 ) { // ratio_goal_pub_
         double rate_suc_goal = SyncReadGoal();

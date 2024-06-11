@@ -51,13 +51,6 @@ template <typename Addr> void DynamixelHandler::SyncWriteGoal(set<GoalValueIndex
     for (const auto& [id, _] : id_goal_vec_map) is_goal_updated_[id] = false;
 }
 
-template <> void DynamixelHandler::SyncWriteMode(){
-    SyncWriteMode<AddrX>();
-    SyncWriteMode<AddrP>();
-}
-template <typename Addr> void DynamixelHandler::SyncWriteMode(){
-    return;
-}
 
 template <> void DynamixelHandler::SyncWriteGain(){
     SyncWriteGain<AddrX>();
@@ -196,32 +189,6 @@ template <typename Addr> double DynamixelHandler::SyncReadHardwareErrors(){
         }
     }
     return id_error_map.size()/double(target_id_list.size());
-}
-
-/**
- * @func SyncReadMode
- * @brief モードに関する値を読み込む
- * @return 読み取りの成功率
-*/
-template <> double DynamixelHandler::SyncReadMode(){
-    double suc_rate_X = SyncReadMode<AddrX>();
-    double suc_rate_P = SyncReadMode<AddrP>();
-    return (suc_rate_X * num_[SERIES_X] + suc_rate_P * num_[SERIES_P]) / series_.size();
-}
-template <typename Addr> double DynamixelHandler::SyncReadMode(){
-    vector<uint8_t> target_id_list;
-    for (int id : id_set_) if ( series_[id]==Addr::series() ) target_id_list.push_back(id);
-    if ( target_id_list.empty() ) return 1.0; // 読み込むデータがない場合は即時return
-
-    auto id_torque_map     = dyn_comm_.SyncRead( Addr::torque_enable,                      target_id_list);
-    auto id_dv_op_mode_map = dyn_comm_.SyncRead({Addr::drive_mode, Addr::operating_mode}, target_id_list);  fflush(stdout);
-
-    for ( const auto& [id, toqrue] : id_torque_map ) tq_mode_[id] = toqrue;
-    for ( const auto& [id, dv_op]  : id_dv_op_mode_map ) {
-        dv_mode_[id] = dv_op[0];
-        op_mode_[id] = dv_op[1];
-    }
-    return 1.0;
 }
 
 /**
@@ -422,4 +389,23 @@ template <typename Addr> void DynamixelHandler::StopDynamixels(){
     dyn_comm_.SyncWrite(Addr::bus_watchdog, id_list, bus_watchtime_pulse);
     ROS_INFO("%s servo will be stopped", Addr::series()==SERIES_X ? "X series" 
                                        : Addr::series()==SERIES_X ? "P series" : "Unknown");
+}
+
+template <> void DynamixelHandler::CheckDynamixels(){
+    CheckDynamixels<AddrX>();
+    CheckDynamixels<AddrP>();
+}
+template <typename Addr> void DynamixelHandler::CheckDynamixels(){
+    vector<uint8_t> target_id_list;
+    for (int id : id_set_) if ( series_[id]==Addr::series() ) target_id_list.push_back(id);
+    if ( target_id_list.empty() ) return; // 読み込むデータがない場合は即時return
+
+    auto id_torque_map     = dyn_comm_.SyncRead( Addr::torque_enable, target_id_list);
+    for ( const auto& [id, toqrue] : id_torque_map ) tq_mode_[id] = toqrue;
+
+    // auto id_dv_op_mode_map = dyn_comm_.SyncRead({Addr::drive_mode, Addr::operating_mode}, target_id_list);  fflush(stdout);
+    // for ( const auto& [id, dv_op]  : id_dv_op_mode_map ) {
+    //     dv_mode_[id] = dv_op[0];
+    //     op_mode_[id] = dv_op[1];
+    // }
 }

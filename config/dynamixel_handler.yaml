@@ -22,7 +22,6 @@
         ratio/read_error: 10
         ratio/read_limit: 300
         ratio/read_gain: 300
-        ratio/read_mode: 300
         ratio/read_goal: 20
         ratio/varbose_loop: 300
     # Read/Write方式

@@ -256,6 +256,16 @@ void DynamixelHandler::BroadcastDxlState(){
     msg.stamp = this->get_clock()->now();
     for (const auto& [id, value] : state_r_) {
         msg.id_list.push_back(id);
+
+        msg.status.torque_enable.push_back(tq_mode_[id]);
+        switch(op_mode_[id]) {
+            case OPERATING_MODE_CURRENT:              msg.status.operating_mode.push_back("current");           break;
+            case OPERATING_MODE_VELOCITY:             msg.status.operating_mode.push_back("velocity");          break;
+            case OPERATING_MODE_POSITION:             msg.status.operating_mode.push_back("position");          break;
+            case OPERATING_MODE_EXTENDED_POSITION:    msg.status.operating_mode.push_back("extended_position"); break;
+            case OPERATING_MODE_CURRENT_BASE_POSITION:msg.status.operating_mode.push_back("current_position");  break;
+        }
+
         for (auto state : list_read_state_) switch(state) {
             case PRESENT_PWM:          msg.pwm_percent.push_back         (round4(value[state]    )); break;
             case PRESENT_CURRENT:      msg.current_ma.push_back          (round4(value[state]    )); break;
@@ -316,26 +326,6 @@ void DynamixelHandler::BroadcastDxlGain(){
         msg.feedforward_1st_gain_pulse.push_back(gain[FEEDFORWARD_VEL_GAIN]);
     }
     pub_gain_->publish(msg);
-}
-
-void DynamixelHandler::BroadcastDxlMode(){
-    DynamixelMode msg;
-    msg.stamp = this->get_clock()->now();
-    for ( const auto& id : id_set_ ) {
-        msg.id_list.push_back(id);
-        msg.torque_enable.push_back(tq_mode_[id]);
-        switch(op_mode_[id]) {
-            case OPERATING_MODE_CURRENT:              msg.operating_mode.push_back("current");           break;
-            case OPERATING_MODE_VELOCITY:             msg.operating_mode.push_back("velocity");          break;
-            case OPERATING_MODE_POSITION:             msg.operating_mode.push_back("position");          break;
-            case OPERATING_MODE_EXTENDED_POSITION:    msg.operating_mode.push_back("extended_position"); break;
-            case OPERATING_MODE_CURRENT_BASE_POSITION:msg.operating_mode.push_back("current_position");  break;
-        }
-        switch(dv_mode_[id]) {
-            default: msg.drive_mode.push_back("unknown"); break;
-        }
-    }
-    pub_mode_->publish(msg);
 }
 
 void DynamixelHandler::BroadcastDxlGoal(){

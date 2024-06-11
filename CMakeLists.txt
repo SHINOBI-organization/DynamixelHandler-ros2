@@ -23,8 +23,7 @@ set(msg_files
   "msg/DynamixelGain.msg"
   "msg/DynamixelGoal.msg"
   "msg/DynamixelLimit.msg"
-  "msg/DynamixelMode.msg"
-    
+  
   # write専用
   "msg/DynamixelCommand.msg"
   "msg/DynamixelCommandXControlCurrent.msg"
@@ -36,6 +35,9 @@ set(msg_files
   "msg/DynamixelCommandPControlExtendedPosition.msg"
   "msg/DynamixelCommandPControlPosition.msg"
   "msg/DynamixelCommandPControlVelocity.msg"
+
+  # その他
+  "msg/DynamixelOptionMode.msg"
 )
 set(srv_files
 # rebootとかはこっちかな？

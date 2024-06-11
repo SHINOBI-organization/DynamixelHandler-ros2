@@ -1,5 +1,5 @@
 builtin_interfaces/Time stamp
-uint16[]  id_list
+uint16[] id_list
 
 float64[] pwm_percent
 float64[] current_ma
