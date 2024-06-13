@@ -1,8 +1,5 @@
 #include "dynamixel_handler.hpp"
 
-template <typename T> bool is_in(const T& val, const vector<T>& v) { return std::find(v.begin(), v.end(), val) != v.end(); }
-template <typename T> bool is_in(const T& val, const    set<T>& s) { return s.find(val) != s.end(); }
-
 //* 基本機能をまとめた関数たち
 
 // 各シリーズのDynamixelを検出する．
@@ -71,9 +68,9 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
     WriteTorqueEnable(id, false);
     /*モード変更*/WriteOperatingMode(id, mode);  //**RAMのデータが消えるので注意, これは電源喪失とは異なるのでRAMデータの回復を入れる
     // goal_w_を全部書き込んで，本体とこのプログラムの同期行う．
-    WriteGoalPWM     (id, goal_w_[id][GOAL_PWM     ]);
-    WriteGoalCurrent (id, goal_w_[id][GOAL_CURRENT ]);
-    WriteGoalVelocity(id, goal_w_[id][GOAL_VELOCITY]);
+    if ( op_mode_[id] != OPERATING_MODE_PWM      )  WriteGoalPWM     (id, goal_w_[id][GOAL_PWM     ]);
+    if ( op_mode_[id] != OPERATING_MODE_CURRENT  )  WriteGoalCurrent (id, goal_w_[id][GOAL_CURRENT ]);
+    if ( op_mode_[id] != OPERATING_MODE_VELOCITY )  WriteGoalVelocity(id, goal_w_[id][GOAL_VELOCITY]);
     WriteProfileAcc  (id, goal_w_[id][PROFILE_ACC  ]);
     WriteProfileVel  (id, goal_w_[id][PROFILE_VEL  ]);
     WriteGoalPosition(id, goal_w_[id][GOAL_POSITION]);

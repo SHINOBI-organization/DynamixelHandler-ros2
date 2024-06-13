@@ -60,6 +60,9 @@ template<typename T> T  operator ++ (T& v, int) { T p=v; ++v; return p;}
 #define ROS_INFO_STREAM(...)  RCLCPP_INFO_STREAM(this->get_logger(), __VA_ARGS__)
 #define ROS_WARN_STREAM(...)  RCLCPP_WARN_STREAM(this->get_logger(), __VA_ARGS__)
 #define ROS_ERROR_STREAM(...) RCLCPP_ERROR_STREAM(this->get_logger(), __VA_ARGS__)
+// vectorやsetに値が含まれているかどうかを調べる関数
+template <typename T> bool is_in(const T& val, const vector<T>& v) { return std::find(v.begin(), v.end(), val) != v.end(); }
+template <typename T> bool is_in(const T& val, const    set<T>& s) { return s.find(val) != s.end(); }
 
 /**
  * DynamixelをROSで動かすためのクラス．本pkgのメインクラス． 
