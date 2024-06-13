@@ -499,10 +499,12 @@ template <> void DynamixelHandler::StopDynamixels(){
 template <typename Addr> void DynamixelHandler::StopDynamixels(){
     vector<uint8_t> id_list; 
     for (auto id : id_set_) if ( series_[id]==Addr::series() ) id_list.push_back(id);
+    auto offset_pulse_now = dyn_comm_.SyncRead(Addr::homing_offset, id_list);
     vector<int64_t> offset_pulse(id_list.size(), 0);
     dyn_comm_.SyncWrite(Addr::homing_offset, id_list, offset_pulse); // マジで謎だが，BusWatchdogを設定するとHomingOffset分だけ回転してしまう...多分ファームrウェアのバグ
     vector<int64_t> bus_watchtime_pulse(id_list.size(), 1);
     dyn_comm_.SyncWrite(Addr::bus_watchdog, id_list, bus_watchtime_pulse);
+    dyn_comm_.SyncWrite(Addr::homing_offset, offset_pulse_now);
     ROS_INFO("%s servo will be stopped", Addr::series()==SERIES_X ? "X series" 
                                        : Addr::series()==SERIES_X ? "P series" : "Unknown");
 }
