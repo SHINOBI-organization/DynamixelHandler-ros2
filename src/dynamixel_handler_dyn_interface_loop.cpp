@@ -62,7 +62,7 @@ template <typename Addr> void DynamixelHandler::SyncWriteGain(set<GainIndex> lis
     if ( list_write_gain.empty() ) return; // 空なら即時return
     //* 書き込む範囲のイテレータを取得, 分割書き込みが有効な場合書き込む範囲を1つ目のみに制限,残りは再帰的に処理する．
     auto [start,end] = minmax_element(list_write_gain.begin(), list_write_gain.end());
-    if ( use_split_write_ || true ) end = start; // 分割書き込みを常に有効にする．
+    if ( use_split_write_ || id_set_.size()>5  ) end = start; // 分割書き込みを常に有効にする．
     //* 書き込みに必要な変数を用意
     vector<DynamixelAddress> gain_addr_list;  // 書き込むコマンドのアドレスのベクタ
     map<uint8_t, vector<int64_t>> id_gain_vec_map; // id と 書き込むデータのベクタのマップ
@@ -112,7 +112,7 @@ template <typename Addr> void DynamixelHandler::SyncWriteLimit(set<LimitIndex> l
     if ( list_write_limit.empty() ) return; // 空なら即時return
     //* 書き込む範囲のイテレータを取得, 分割書き込みが有効な場合書き込む範囲を1つ目のみに制限,残りは再帰的に処理する．
     auto [start,end] = minmax_element(list_write_limit.begin(), list_write_limit.end()); 
-    if ( use_split_write_ || true ) end = start; // 分割書き込みを常に有効にする．
+    if ( use_split_write_ || id_set_.size()>5  ) end = start; // 分割書き込みを常に有効にする．
     //* 書き込みに必要な変数を用意
     vector<DynamixelAddress> limit_addr_list;  // 書き込むコマンドのアドレスのベクタ
     map<uint8_t, vector<int64_t>> id_limit_vec_map; // id と 書き込むデータのベクタのマップ
@@ -356,7 +356,7 @@ template <typename Addr> double DynamixelHandler::SyncReadLimit(set<LimitIndex> 
     if ( list_read_limit.empty() ) return 1.0; // 空なら即時return
     //* 読み込む範囲のlimit_addr_listのインデックスを取得
     auto [start, end] = minmax_element(list_read_limit.begin(), list_read_limit.end());
-    if ( use_split_read_ || true ) end = start; // 分割読み込みを常に有効にする．
+    if ( use_split_read_ || id_set_.size()>5  ) end = start; // 分割読み込みを常に有効にする．
     //* 読み込みに必要な変数を用意
     vector<DynamixelAddress> limit_addr_list;
     for (LimitIndex l=*start; l<=*end; l++) switch ( l ) {
@@ -439,7 +439,7 @@ template <typename Addr> double DynamixelHandler::SyncReadGoal(set<GoalValueInde
     if ( list_read_goal.empty() ) return 1.0; // 空なら即時return
     //* 読み込む範囲のgoal_addr_listのインデックスを取得
     auto [start, end] = minmax_element(list_read_goal.begin(), list_read_goal.end());
-    if ( use_split_read_ || true ) end = start; // 分割読み込みを常に有効にする．
+    if ( use_split_read_ || id_set_.size()>5 ) end = start; // 分割読み込みを常に有効にする．
     //* 読み込みに必要な変数を用意
     vector<DynamixelAddress> goal_addr_list;
     for (GoalValueIndex g=*start; g<=*end; g++) switch ( g ) {
@@ -500,7 +500,7 @@ template <typename Addr> void DynamixelHandler::StopDynamixels(){
     vector<uint8_t> id_list; 
     for (auto id : id_set_) if ( series_[id]==Addr::series() ) id_list.push_back(id);
     vector<int64_t> offset_pulse(id_list.size(), 0);
-    dyn_comm_.SyncWrite(Addr::homing_offset ,id_list, offset_pulse); // マジで謎だが，BusWatchdogを設定するとHomingOffset分だけ回転してしまう...多分ファームrウェアのバグ
+    dyn_comm_.SyncWrite(Addr::homing_offset, id_list, offset_pulse); // マジで謎だが，BusWatchdogを設定するとHomingOffset分だけ回転してしまう...多分ファームrウェアのバグ
     vector<int64_t> bus_watchtime_pulse(id_list.size(), 1);
     dyn_comm_.SyncWrite(Addr::bus_watchdog, id_list, bus_watchtime_pulse);
     ROS_INFO("%s servo will be stopped", Addr::series()==SERIES_X ? "X series" 

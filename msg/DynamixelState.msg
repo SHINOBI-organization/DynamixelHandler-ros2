@@ -1,6 +1,6 @@
 builtin_interfaces/Time stamp
 
-dynamixel_handler/DynamixelOptionMode status
+dynamixel_handler/DynamixelOptionMode mode
 
 uint16[] id_list
 

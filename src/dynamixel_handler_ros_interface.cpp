@@ -249,7 +249,7 @@ void DynamixelHandler::CallBackDxlGain(const DynamixelGain& msg) {
     if ( store_vi.empty() && store_vp.empty() && 
          store_pd.empty() && store_pi.empty() && store_pp.empty() && 
          store_fa.empty() && store_fv.empty() )
-        ROS_ERROR("Element size all dismatch; skiped callback");
+        ROS_WARN("\nElement size or Dyanmxiel Series is dismatch; skiped callback");
 }
 
 void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
@@ -286,7 +286,7 @@ void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
 
     if ( store_temp.empty() && store_max_v.empty() && store_min_v.empty() && store_pwm.empty() && store_cur.empty() && 
          store_acc.empty() && store_vel.empty() && store_max_p.empty() && store_min_p.empty() )
-        ROS_ERROR("Element size all dismatch; skiped callback");
+        ROS_WARN("\nElement size or Dyanmxiel Series is dismatch; skiped callback");
 }
 
 double round4(double val) { return round(val*10000.0)/10000.0; }
@@ -297,13 +297,13 @@ void DynamixelHandler::BroadcastDxlState(){
     for (const auto& [id, value] : state_r_) {
         msg.id_list.push_back(id);
 
-        msg.status.torque_enable.push_back(tq_mode_[id]);
+        msg.mode.torque_enable.push_back(tq_mode_[id]);
         switch(op_mode_[id]) {
-            case OPERATING_MODE_CURRENT:              msg.status.operating_mode.push_back("current");           break;
-            case OPERATING_MODE_VELOCITY:             msg.status.operating_mode.push_back("velocity");          break;
-            case OPERATING_MODE_POSITION:             msg.status.operating_mode.push_back("position");          break;
-            case OPERATING_MODE_EXTENDED_POSITION:    msg.status.operating_mode.push_back("extended_position"); break;
-            case OPERATING_MODE_CURRENT_BASE_POSITION:msg.status.operating_mode.push_back("current_position");  break;
+            case OPERATING_MODE_CURRENT:              msg.mode.operating_mode.push_back("current");           break;
+            case OPERATING_MODE_VELOCITY:             msg.mode.operating_mode.push_back("velocity");          break;
+            case OPERATING_MODE_POSITION:             msg.mode.operating_mode.push_back("position");          break;
+            case OPERATING_MODE_EXTENDED_POSITION:    msg.mode.operating_mode.push_back("extended_position"); break;
+            case OPERATING_MODE_CURRENT_BASE_POSITION:msg.mode.operating_mode.push_back("current_position");  break;
         }
 
         for (auto state : list_read_state_) switch(state) {
