@@ -4,88 +4,58 @@
 using std::bind;
 using std::placeholders::_1;
 
-DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
+DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler", rclcpp::NodeOptions()
+                                                                  .allow_undeclared_parameters(true)
+                                                                  .automatically_declare_parameters_from_overrides(true)) {
     ROS_INFO( "Initializing DynamixelHandler .....");
 
     // 通信の開始
-    this->declare_parameter("baudrate", 57600);
-    this->declare_parameter("latency_timer", 16);
-    this->declare_parameter("device_name", "/dev/ttyUSB0");
-    int baudrate       = get_parameter("baudrate").as_int();
-    int latency_timer  = get_parameter("latency_timer").as_int();
-    string device_name = get_parameter("device_name").as_string();
+    int baudrate      ; this->get_parameter_or("baudrate"     , baudrate     , 57600                 );
+    int latency_timer ; this->get_parameter_or("latency_timer", latency_timer,    16                 );
+    string device_name; this->get_parameter_or("device_name"  , device_name  , string("/dev/ttyUSB0"));
 
-    dyn_comm_ = DynamixelCommunicator(device_name.c_str(), baudrate, latency_timer); fflush(stdout); // printfのバッファを吐き出す． これがないと printfの表示が遅延する
-    if ( !dyn_comm_.OpenPort() ) {
+    dyn_comm_ = DynamixelCommunicator(device_name.c_str(), baudrate, latency_timer);
+    if ( !dyn_comm_.OpenPort() ) { fflush(stdout); // printfのバッファを吐き出す． これがないと printfの表示が遅延する
         ROS_ERROR("Failed to open USB device [%s]", dyn_comm_.port_name().c_str()); 
         throw std::runtime_error("Initialization failed (device open)");
     } 
-
     // serial通信のvarbose設定
-    this->declare_parameter("dyn_comm/varbose", false);
-    bool serial_varbose = get_parameter("dyn_comm/varbose").as_bool();
+    bool serial_varbose; get_parameter_or("dyn_comm/varbose", serial_varbose, false);
     dyn_comm_.set_varbose(serial_varbose); fflush(stdout);
 
     // serial通信のretry設定
-    this->declare_parameter("dyn_comm/retry_num", 5);
-    this->declare_parameter("dyn_comm/inerval_msec", 10);
-    int num_try       = get_parameter("dyn_comm/retry_num").as_int();
-    int msec_interval = get_parameter("dyn_comm/inerval_msec").as_int();
+    int num_try      ; get_parameter_or("dyn_comm/retry_num"   , num_try      ,  5);
+    int msec_interval; get_parameter_or("dyn_comm/inerval_msec", msec_interval, 10);
     dyn_comm_.set_retry_config(num_try, msec_interval); fflush(stdout);
 
     // main loop の設定
-    this->declare_parameter("loop_rate",           50);
-    this->declare_parameter("ratio/read_state",     1);
-    this->declare_parameter("ratio/read_error",   100);
-    this->declare_parameter("ratio/read_limit",    0);
-    this->declare_parameter("ratio/read_gain",     0);
-    this->declare_parameter("ratio/read_goal",     0);
-    this->declare_parameter("ratio/varbose_loop", 100);
-    this->declare_parameter("max_log_width",        7);
-    this->declare_parameter("use/split_write",     false);
-    this->declare_parameter("use/split_read",      false);
-    this->declare_parameter("use/fast_read",        true);
-    this->declare_parameter("use/multi_rate_read", false);
-    this->declare_parameter("varbose/callback",           false);
-    this->declare_parameter("varbose/write_commad",       false);
-    this->declare_parameter("varbose/write_options",       false);
-    this->declare_parameter("varbose/read_state/raw",     false);
-    this->declare_parameter("varbose/read_state/err",     false);
-    this->declare_parameter("varbose/read_options/raw",    false);
-    this->declare_parameter("varbose/read_options/err",    false);
-    this->declare_parameter("varbose/read_hardware_error",false);
-    loop_rate_        = get_parameter("loop_rate"         ).as_int();
-    ratio_state_pub_  = get_parameter("ratio/read_state"  ).as_int();
-    ratio_error_pub_  = get_parameter("ratio/read_error"  ).as_int();
-    ratio_limit_pub_  = get_parameter("ratio/read_limit"  ).as_int();
-    ratio_gain_pub_   = get_parameter("ratio/read_gain"   ).as_int();
-    ratio_goal_pub_   = get_parameter("ratio/read_goal"   ).as_int();
-    ratio_mainloop_   = get_parameter("ratio/varbose_loop").as_int();
-    width_log_        = get_parameter("max_log_width"     ).as_int();
-    use_split_write_     = get_parameter("use/split_write"    ).as_bool();
-    use_split_read_      = get_parameter("use/split_read"     ).as_bool();
-    use_fast_read_       = get_parameter("use/fast_read"      ).as_bool();
-    use_multi_rate_read_ = get_parameter("use/multi_rate_read").as_bool();
-    varbose_callback_     = get_parameter("varbose/callback"           ).as_bool();
-    varbose_write_cmd_    = get_parameter("varbose/write_commad"       ).as_bool();
-    varbose_write_opt_    = get_parameter("varbose/write_options"       ).as_bool();
-    varbose_read_st_      = get_parameter("varbose/read_state/raw"     ).as_bool();
-    varbose_read_st_err_  = get_parameter("varbose/read_state/err"     ).as_bool();
-    varbose_read_opt_     = get_parameter("varbose/read_options/raw"    ).as_bool();
-    varbose_read_opt_err_ = get_parameter("varbose/read_options/err"    ).as_bool();
-    varbose_read_hwerr_   = get_parameter("varbose/read_hardware_error").as_bool();
+    this->get_parameter_or("loop_rate", loop_rate_, 50u);
+    this->get_parameter_or("ratio/read_state"  , ratio_state_pub_,   1u);
+    this->get_parameter_or("ratio/read_error"  , ratio_error_pub_, 100u);
+    this->get_parameter_or("ratio/read_limit"  , ratio_limit_pub_,   0u);
+    this->get_parameter_or("ratio/read_gain"   , ratio_gain_pub_ ,   0u);
+    this->get_parameter_or("ratio/read_goal"   , ratio_goal_pub_ ,   0u);
+    this->get_parameter_or("ratio/varbose_loop", ratio_mainloop_ , 100u);
+    this->get_parameter_or("max_log_width"     , width_log_      ,   7u);
+    this->get_parameter_or("use/split_write"    , use_split_write_    , false);
+    this->get_parameter_or("use/split_read"     , use_split_read_     , false);
+    this->get_parameter_or("use/fast_read"      , use_fast_read_      , true);
+    this->get_parameter_or("use/multi_rate_read", use_multi_rate_read_, false);
+    this->get_parameter_or("varbose/callback"           , varbose_callback_    , false);
+    this->get_parameter_or("varbose/write_commad"       , varbose_write_cmd_   , false);
+    this->get_parameter_or("varbose/write_options"      , varbose_write_opt_   , false);
+    this->get_parameter_or("varbose/read_state/raw"     , varbose_read_st_     , false);
+    this->get_parameter_or("varbose/read_state/err"     , varbose_read_st_err_ , false);
+    this->get_parameter_or("varbose/read_options/raw"   , varbose_read_opt_    , false);
+    this->get_parameter_or("varbose/read_options/err"   , varbose_read_opt_err_, false);
+    this->get_parameter_or("varbose/read_hardware_error", varbose_read_hwerr_  , false);
 
     // id_listの作成
-    this->declare_parameter("init/expected_servo_num", 0); // 0のときはチェックしない
-    this->declare_parameter("init/auto_search_retry_times", 5);
-    this->declare_parameter("init/auto_search_min_id", 1);
-    this->declare_parameter("init/auto_search_max_id", 35);
-    int num_expexted = get_parameter("init/expected_servo_num").as_int();
-    int times_retry = get_parameter("init/auto_search_retry_times").as_int();
-    int id_min = get_parameter("init/auto_search_min_id").as_int();
-    int id_max = get_parameter("init/auto_search_max_id").as_int();
+    int num_expexted; this->get_parameter_or("init/expected_servo_num"     , num_expexted, 0);
+    int times_retry ; this->get_parameter_or("init/auto_search_retry_times", times_retry , 5);
+    int id_min      ; this->get_parameter_or("init/auto_search_min_id"     , id_min      , 1);
+    int id_max      ; this->get_parameter_or("init/auto_search_max_id"     , id_max      , 35);
 
-    ROS_INFO(" Auto scanning Dynamixel (id range [%d] to [%d]) ...", id_min, id_max);
     if ( num_expexted>0 ) ROS_INFO("Expected number of Dynamixel is [%d]", num_expexted);
     else ROS_WARN("Expected number of Dynamixel is not set. Free number of Dynamixel is allowed");
     auto num_found = ScanDynamixels(id_min, id_max, num_expexted, times_retry);
@@ -159,10 +129,8 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
 
     // 状態のreadの後にやるべき初期化
     ROS_INFO( " Initializing dynamixel state  ...");
-    this->declare_parameter("init/hardware_error_auto_clean", true);
-    this->declare_parameter("init/torque_auto_enable", true);
-    bool do_clean_hwerr = get_parameter("init/hardware_error_auto_clean").as_bool();
-    bool do_torque_on   = get_parameter("init/torque_auto_enable").as_bool();
+    bool do_clean_hwerr; this->get_parameter_or("init/hardware_error_auto_clean", do_clean_hwerr, true);
+    bool do_torque_on  ; this->get_parameter_or("init/torque_auto_enable"       , do_torque_on  , true);
     for (auto id : id_set_) {
         if ( do_clean_hwerr ) ClearHardwareError(id); // 現在の状態を変えない
         if ( do_torque_on )   TorqueOn(id);           // 現在の状態を変えない
@@ -171,40 +139,25 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler") {
     //  readする情報の設定
     if ( !use_multi_rate_read_ ) {
         list_read_state_.clear();
-        this->declare_parameter("read/present_pwm",           false);
-        this->declare_parameter("read/present_current",        true);
-        this->declare_parameter("read/present_velocity",       true);
-        this->declare_parameter("read/present_position",       true);
-        this->declare_parameter("read/velocity_trajectory",   false);
-        this->declare_parameter("read/position_trajectory",   false);
-        this->declare_parameter("read/present_input_voltage", false);
-        this->declare_parameter("read/present_temperature",   false);
-        if( get_parameter("read/present_pwm"          ).as_bool() ) list_read_state_.insert(PRESENT_PWM          );
-        if( get_parameter("read/present_current"      ).as_bool() ) list_read_state_.insert(PRESENT_CURRENT      );
-        if( get_parameter("read/present_velocity"     ).as_bool() ) list_read_state_.insert(PRESENT_VELOCITY     );
-        if( get_parameter("read/present_position"     ).as_bool() ) list_read_state_.insert(PRESENT_POSITION     );
-        if( get_parameter("read/velocity_trajectory"  ).as_bool() ) list_read_state_.insert(VELOCITY_TRAJECTORY  );
-        if( get_parameter("read/position_trajectory"  ).as_bool() ) list_read_state_.insert(POSITION_TRAJECTORY  );
-        if( get_parameter("read/present_input_voltage").as_bool() ) list_read_state_.insert(PRESENT_INPUT_VOLTAGE);
-        if( get_parameter("read/present_temperature"  ).as_bool() ) list_read_state_.insert(PRESENT_TEMPERTURE   );
+        bool tmp;
+        get_parameter_or("read/present_pwm"          , tmp, false); if( tmp ) list_read_state_.insert(PRESENT_PWM          );
+        get_parameter_or("read/present_current"      , tmp,  true); if( tmp ) list_read_state_.insert(PRESENT_CURRENT      );
+        get_parameter_or("read/present_velocity"     , tmp,  true); if( tmp ) list_read_state_.insert(PRESENT_VELOCITY     );
+        get_parameter_or("read/present_position"     , tmp,  true); if( tmp ) list_read_state_.insert(PRESENT_POSITION     );
+        get_parameter_or("read/velocity_trajectory"  , tmp, false); if( tmp ) list_read_state_.insert(VELOCITY_TRAJECTORY  );
+        get_parameter_or("read/position_trajectory"  , tmp, false); if( tmp ) list_read_state_.insert(POSITION_TRAJECTORY  );
+        get_parameter_or("read/present_input_voltage", tmp, false); if( tmp ) list_read_state_.insert(PRESENT_INPUT_VOLTAGE);
+        get_parameter_or("read/present_temperature"  , tmp, false); if( tmp ) list_read_state_.insert(PRESENT_TEMPERTURE   );
     } else {
         ratio_state_pub_ = 1; // multi_rate_readの場合は，ratio_state_pub_は1にする
-        this->declare_parameter("multi_rate_read/ratio/present_pwm",            0);
-        this->declare_parameter("multi_rate_read/ratio/present_current",        1);
-        this->declare_parameter("multi_rate_read/ratio/present_velocity",       1);
-        this->declare_parameter("multi_rate_read/ratio/present_position",       1);
-        this->declare_parameter("multi_rate_read/ratio/velocity_trajectory",    0);
-        this->declare_parameter("multi_rate_read/ratio/position_trajectory",    0);
-        this->declare_parameter("multi_rate_read/ratio/present_input_voltage", 10);
-        this->declare_parameter("multi_rate_read/ratio/present_temperature",   10);
-        multi_rate_read_ratio_pub_[PRESENT_PWM          ] = get_parameter("multi_rate_read/ratio/present_pwm"          ).as_int();
-        multi_rate_read_ratio_pub_[PRESENT_CURRENT      ] = get_parameter("multi_rate_read/ratio/present_current"      ).as_int();
-        multi_rate_read_ratio_pub_[PRESENT_VELOCITY     ] = get_parameter("multi_rate_read/ratio/present_velocity"     ).as_int();
-        multi_rate_read_ratio_pub_[PRESENT_POSITION     ] = get_parameter("multi_rate_read/ratio/present_position"     ).as_int();
-        multi_rate_read_ratio_pub_[VELOCITY_TRAJECTORY  ] = get_parameter("multi_rate_read/ratio/velocity_trajectory"  ).as_int();
-        multi_rate_read_ratio_pub_[POSITION_TRAJECTORY  ] = get_parameter("multi_rate_read/ratio/position_trajectory"  ).as_int();
-        multi_rate_read_ratio_pub_[PRESENT_INPUT_VOLTAGE] = get_parameter("multi_rate_read/ratio/present_input_voltage").as_int();
-        multi_rate_read_ratio_pub_[PRESENT_TEMPERTURE   ] = get_parameter("multi_rate_read/ratio/present_temperature"  ).as_int();
+        get_parameter_or("multi_rate_read/ratio/present_pwm"          , multi_rate_read_ratio_pub_[PRESENT_PWM          ],  0u);
+        get_parameter_or("multi_rate_read/ratio/present_current"      , multi_rate_read_ratio_pub_[PRESENT_CURRENT      ],  1u);
+        get_parameter_or("multi_rate_read/ratio/present_velocity"     , multi_rate_read_ratio_pub_[PRESENT_VELOCITY     ],  1u);
+        get_parameter_or("multi_rate_read/ratio/present_position"     , multi_rate_read_ratio_pub_[PRESENT_POSITION     ],  1u);
+        get_parameter_or("multi_rate_read/ratio/velocity_trajectory"  , multi_rate_read_ratio_pub_[VELOCITY_TRAJECTORY  ],  0u);
+        get_parameter_or("multi_rate_read/ratio/position_trajectory"  , multi_rate_read_ratio_pub_[POSITION_TRAJECTORY  ],  0u);
+        get_parameter_or("multi_rate_read/ratio/present_input_voltage", multi_rate_read_ratio_pub_[PRESENT_INPUT_VOLTAGE], 10u);
+        get_parameter_or("multi_rate_read/ratio/present_temperature"  , multi_rate_read_ratio_pub_[PRESENT_TEMPERTURE   ], 10u);
     }
 
     ROS_INFO( "..... DynamixelHandler is initialized");
