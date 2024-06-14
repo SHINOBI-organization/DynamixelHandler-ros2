@@ -36,13 +36,11 @@ void DynamixelHandler::CallBackDxlCommand(const DynamixelCommand::SharedPtr msg)
     if (msg->command == "remove_id"   || msg->command == "RMID")
         for (auto id : id_list) id_set_.erase( id );
     if (msg->command == "enable") 
-        for (auto id : id_list) WriteTorqueEnable(id, true);
+        for (auto id : id_list) WriteTorqueEnable(id, TORQUE_ENABLE);
     if (msg->command == "disable")
-        for (auto id : id_list) WriteTorqueEnable(id, false);
+        for (auto id : id_list) WriteTorqueEnable(id, TORQUE_DISABLE);
     if (msg->command == "reboot") 
         for (auto id : id_list) dyn_comm_.Reboot(id);
-
-    for ( auto id : id_set_ ) ROS_INFO("id : %d", id);
 
     CallBackDxlCmd_X_Position(msg->x_pos);
     CallBackDxlCmd_X_Velocity(msg->x_vel);
@@ -329,7 +327,7 @@ void DynamixelHandler::BroadcastDxlState(){
     for (const auto& [id, value] : state_r_) if ( is_in(id, id_set_) ) {
         msg.id_list.push_back(id);
 
-        msg.mode.torque_enable.push_back(tq_mode_[id]);
+        msg.mode.torque_enable.push_back(tq_mode_[id]==TORQUE_ENABLE);
         switch(op_mode_[id]) {
             case OPERATING_MODE_CURRENT:              msg.mode.operating_mode.push_back("current");           break;
             case OPERATING_MODE_VELOCITY:             msg.mode.operating_mode.push_back("velocity");          break;

@@ -64,7 +64,7 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
     if ( op_mode_[id] == mode ) return true; // 既に同じモードの場合は何もしない
     if ( get_clock()->now().seconds() - when_op_mode_updated_[id] < 1.0 ) rsleep(1000); // 1秒以内に変更した場合は1秒待つ
     // 変更前のトルク状態を確認
-    const bool is_enable = (ReadTorqueEnable(id) == TORQUE_ENABLE); // read失敗しても0が返ってくるので問題ない
+    const bool prev_torque = ReadTorqueEnable(id); // read失敗しても0が返ってくるので問題ない
     WriteTorqueEnable(id, false);
     /*モード変更*/WriteOperatingMode(id, mode);  //**RAMのデータが消えるので注意, これは電源喪失とは異なるのでRAMデータの回復を入れる
     // goal_w_を全部書き込んで，本体とこのプログラムの同期行う．
@@ -75,7 +75,7 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
     WriteProfileVel  (id, goal_w_[id][PROFILE_VEL  ]);
     WriteGoalPosition(id, goal_w_[id][GOAL_POSITION]);
     // WriteGains(id, gain_r_[id]);　// ** Gain値のデフォルトも変わる．面倒な．．．
-    WriteTorqueEnable(id, is_enable);
+    WriteTorqueEnable(id, prev_torque == TORQUE_ENABLE );
     // 結果を確認
     bool is_changed = (ReadOperatingMode(id) == mode);
     if ( is_changed ) {
@@ -112,8 +112,8 @@ bool DynamixelHandler::TorqueOn(uint8_t id){
         /*トルクを入れる*/WriteTorqueEnable(id, true);
     }
     // 結果を確認
-    tq_mode_[id] = (ReadTorqueEnable(id) == TORQUE_ENABLE);
-    if ( !tq_mode_[id] ) ROS_ERROR("ID [%d] failed to enable torque", id);
+    tq_mode_[id] = ReadTorqueEnable(id);
+    if ( tq_mode_[id] != TORQUE_ENABLE ) ROS_ERROR("ID [%d] failed to enable torque", id);
     return tq_mode_[id];
 }
 
@@ -123,8 +123,8 @@ bool DynamixelHandler::TorqueOff(uint8_t id){
     // トルクを切る
     WriteTorqueEnable(id, false);
     // 結果を確認
-    tq_mode_[id] = (ReadTorqueEnable(id) == TORQUE_DISABLE);
-    if ( !tq_mode_[id] ) ROS_ERROR("ID [%d] failed to disable torque", id);
+    tq_mode_[id] = ReadTorqueEnable(id);
+    if ( tq_mode_[id] != TORQUE_DISABLE ) ROS_ERROR("ID [%d] failed to disable torque", id);
     return tq_mode_[id];
 }
 

@@ -518,8 +518,8 @@ template <typename Addr> void DynamixelHandler::CheckDynamixels(){
     for (int id : id_set_) if ( series_[id]==Addr::series() ) target_id_list.push_back(id);
     if ( target_id_list.empty() ) return; // 読み込むデータがない場合は即時return
 
-    auto id_torque_map     = dyn_comm_.SyncRead( Addr::torque_enable, target_id_list);
-    for ( const auto& [id, toqrue] : id_torque_map ) tq_mode_[id] = toqrue;
+    auto id_torque_map     = dyn_comm_.SyncRead( Addr::torque_enable, target_id_list );
+    for ( const auto& [id, torque] : id_torque_map ) tq_mode_[id] = torque;
 
     // auto id_dv_op_mode_map = dyn_comm_.SyncRead({Addr::drive_mode, Addr::operating_mode}, target_id_list);  fflush(stdout);
     // for ( const auto& [id, dv_op]  : id_dv_op_mode_map ) {
