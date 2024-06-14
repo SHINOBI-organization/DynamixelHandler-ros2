@@ -81,13 +81,15 @@ class DynamixelHandler : public rclcpp::Node {
         void BroadcastDxlError();
         // void BroadcastDxlConfig(); // todo
         // void BroadcastDxlExtra();  // todo
-        void BroadcastDxlGoal(); 
         void BroadcastDxlLimit();
-        void BroadcastDxlGain(); 
-        void CallBackDxlLimit (const DynamixelLimit& msg); // todo
-        void CallBackDxlGain  (const DynamixelGain& msg);  // todo
-        void CallBackDxlGoal  (const DynamixelGoal& msg);  // todo
-        void CallBackDxlCommand               (const DynamixelCommand& msg);    // todo
+        void BroadcastDxlGoal(); 
+        void BroadcastDxlGain();
+        // void CallBackDxlConfig(const DynamixelConfig& msg); // todo
+        // void CallBackDxlExtra (const DynamixelExtra& msg);  // todo
+        void CallBackDxlLimit (const DynamixelLimit& msg);
+        void CallBackDxlGoal  (const DynamixelGoal& msg); 
+        void CallBackDxlGain  (const DynamixelGain& msg); 
+        void CallBackDxlCommand               (const DynamixelCommand::SharedPtr msg);
         void CallBackDxlCmd_X_Position        (const DynamixelCommandXControlPosition& msg);
         void CallBackDxlCmd_X_Velocity        (const DynamixelCommandXControlVelocity& msg);
         void CallBackDxlCmd_X_Current         (const DynamixelCommandXControlCurrent& msg);
