@@ -27,9 +27,9 @@ uint8_t DynamixelHandler::ScanDynamixels(uint8_t id_min, uint8_t id_max, uint32_
     if ( id_set_.size() != 0 && id_set_.size() >= num_expected ) return id_set_.size();
     // 再帰処理
     if ( id_set_.size() < num_expected )  
-        ROS_WARN( "Less expected number of Dynamixel are found, %d times retry left", times_retry );
+        ROS_WARN( "Less expected number of Dynamixel are found,\n > %d times retry left", times_retry );
     if ( num_expected == 0 )
-        ROS_WARN( "Dynamixels are not found yet, %d times retry left", times_retry );
+        ROS_WARN( "Dynamixels are not found yet,\n > %d times retry left", times_retry );
     rsleep(100);
     return ScanDynamixels(id_min, id_max, num_expected, times_retry-1);
 }

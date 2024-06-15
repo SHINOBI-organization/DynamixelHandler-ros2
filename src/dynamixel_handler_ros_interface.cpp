@@ -317,6 +317,14 @@ void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
     if ( store_temp.empty() && store_max_v.empty() && store_min_v.empty() && store_pwm.empty() && store_cur.empty() && 
          store_acc.empty() && store_vel.empty() && store_max_p.empty() && store_min_p.empty() )
         ROS_WARN("\nElement size or Dyanmxiel Series is dismatch; skiped callback");
+
+    //* ROMへの書き込みなので即座に実行する。
+    bool do_write = false;
+    for ( auto id: id_set_ ) if(is_limit_updated_[id]){
+        if(tq_mode_[id] == TORQUE_DISABLE) do_write = true;
+    }
+    if ( do_write ) SyncWriteLimit(list_write_limit_);
+    list_write_limit_.clear();
 }
 
 double round4(double val) { return round(val*10000.0)/10000.0; }

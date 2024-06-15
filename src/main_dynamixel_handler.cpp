@@ -84,7 +84,7 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler", rclcpp::NodeOpt
         sub_cmd_p_cur_  = create_subscription<DynamixelCommandPControlCurrent>         ("dynamixel/p_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_P_Current, this, _1));
         sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1));
     }
-    sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 4, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
+    sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 10, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
     sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
     sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1));
     sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1));
@@ -186,8 +186,6 @@ void DynamixelHandler::MainLoop(){
     list_write_goal_.clear();
     SyncWriteGain(list_write_gain_);
     list_write_gain_.clear();
-    SyncWriteLimit(list_write_limit_);
-    list_write_limit_.clear();
 /* 処理時間時間の計測 */ wtime += duration_cast<microseconds>(system_clock::now()-wstart).count() / 1000.0;
 
     //* 複数周期でstateをreadする場合の処理
@@ -251,8 +249,7 @@ void DynamixelHandler::MainLoop(){
 
 DynamixelHandler::~DynamixelHandler(){
     ROS_INFO( "Terminating DynamixelHandler ...");
-    this->declare_parameter("term/torque_auto_disable", true);
-    bool do_torque_off  = get_parameter("term/torque_auto_disable").as_bool();
+    bool do_torque_off; get_parameter_or("term/torque_auto_disable", do_torque_off, true);
     if ( do_torque_off ) for ( auto id : id_set_ ) TorqueOff(id);
     StopDynamixels();
     ROS_INFO( "  ... DynamixelHandler is terminated");
