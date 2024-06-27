@@ -70,24 +70,27 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler", rclcpp::NodeOpt
     }
     ROS_INFO("  ... Finish scanning Dynamixel");
 
+    auto callback_group_subscriber = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    rclcpp::SubscriptionOptions sub_options;
+    sub_options.callback_group = callback_group_subscriber;
     // Subscriber / Publisherの設定
     if ( num_[SERIES_X] > 0 ) {
-        sub_cmd_x_pos_  = create_subscription<DynamixelCommandXControlPosition>        ("dynamixel/x_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Position, this, _1));
-        sub_cmd_x_vel_  = create_subscription<DynamixelCommandXControlVelocity>        ("dynamixel/x_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Velocity, this, _1));
-        sub_cmd_x_cur_  = create_subscription<DynamixelCommandXControlCurrent>         ("dynamixel/x_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_X_Current, this, _1));
-        sub_cmd_x_cpos_ = create_subscription<DynamixelCommandXControlCurrentPosition> ("dynamixel/x_cmd/current_position",  4, bind(&DynamixelHandler::CallBackDxlCmd_X_CurrentPosition, this, _1));
-        sub_cmd_x_epos_ = create_subscription<DynamixelCommandXControlExtendedPosition>("dynamixel/x_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition, this, _1));
+        sub_cmd_x_pos_  = create_subscription<DynamixelCommandXControlPosition>        ("dynamixel/x_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Position, this, _1), sub_options);
+        sub_cmd_x_vel_  = create_subscription<DynamixelCommandXControlVelocity>        ("dynamixel/x_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_X_Velocity, this, _1), sub_options);
+        sub_cmd_x_cur_  = create_subscription<DynamixelCommandXControlCurrent>         ("dynamixel/x_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_X_Current, this, _1), sub_options);
+        sub_cmd_x_cpos_ = create_subscription<DynamixelCommandXControlCurrentPosition> ("dynamixel/x_cmd/current_position",  4, bind(&DynamixelHandler::CallBackDxlCmd_X_CurrentPosition, this, _1), sub_options);
+        sub_cmd_x_epos_ = create_subscription<DynamixelCommandXControlExtendedPosition>("dynamixel/x_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_X_ExtendedPosition, this, _1), sub_options);
     }
     if ( num_[SERIES_P] > 0) {
-        sub_cmd_p_pos_  = create_subscription<DynamixelCommandPControlPosition>        ("dynamixel/p_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Position, this, _1));
-        sub_cmd_p_vel_  = create_subscription<DynamixelCommandPControlVelocity>        ("dynamixel/p_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Velocity, this, _1));
-        sub_cmd_p_cur_  = create_subscription<DynamixelCommandPControlCurrent>         ("dynamixel/p_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_P_Current, this, _1));
-        sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1));
+        sub_cmd_p_pos_  = create_subscription<DynamixelCommandPControlPosition>        ("dynamixel/p_cmd/position",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Position, this, _1), sub_options);
+        sub_cmd_p_vel_  = create_subscription<DynamixelCommandPControlVelocity>        ("dynamixel/p_cmd/velocity",          4, bind(&DynamixelHandler::CallBackDxlCmd_P_Velocity, this, _1), sub_options);
+        sub_cmd_p_cur_  = create_subscription<DynamixelCommandPControlCurrent>         ("dynamixel/p_cmd/current",           4, bind(&DynamixelHandler::CallBackDxlCmd_P_Current, this, _1), sub_options);
+        sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1), sub_options);
     }
-    sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 10, bind(&DynamixelHandler::CallBackDxlCommand, this, _1));
-    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1));
-    sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1));
-    sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1));
+    sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 4, bind(&DynamixelHandler::CallBackDxlCommand, this, _1), sub_options);
+    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1), sub_options);
+    sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1), sub_options);
+    sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1), sub_options);
 
     pub_state_     = create_publisher<DynamixelState>("dynamixel/state", 4);
     pub_error_     = create_publisher<DynamixelError>("dynamixel/error", 4);
@@ -264,11 +267,13 @@ int main(int argc, char **argv) {
     auto node = std::make_shared<DynamixelHandler>();
     /*Mainloop*/
     auto timer_ = node.get()->create_wall_timer(
-        1.0s/(node->loop_rate_),
-        bind(&DynamixelHandler::MainLoop, node.get())
+          1.0s/(node->loop_rate_)
+        , bind(&DynamixelHandler::MainLoop, node.get())
     ); // 変数に保存する必要あり
     /*Interruption*/
-    rclcpp::spin(node);
+    auto executor = rclcpp::executors::MultiThreadedExecutor::make_unique();
+    executor->add_node(node);
+    executor->spin();
     /*Termination*/
     node.reset(); // rclcpp::shutdown() の前に呼ぶ必要あり
     rclcpp::shutdown();

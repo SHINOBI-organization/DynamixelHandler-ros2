@@ -5,7 +5,7 @@
 // 各シリーズのDynamixelを検出する．
 uint8_t DynamixelHandler::ScanDynamixels(uint8_t id_min, uint8_t id_max, uint32_t num_expected, uint32_t times_retry) {
     id_set_.clear();
-    for (int id = 0; id <= id_max; id++) { fflush(stdout);
+    for (int id = id_min; id <= id_max; id++) { fflush(stdout);
         if ( !dyn_comm_.tryPing(id) ) continue;
         auto dyn_model = dyn_comm_.tryRead(AddrCommon::model_number, id); fflush(stdout);
         switch ( dynamixel_series(dyn_model) ) { 
