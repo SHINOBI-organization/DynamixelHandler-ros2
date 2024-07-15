@@ -521,6 +521,12 @@ template <typename Addr> void DynamixelHandler::CheckDynamixels(){
     auto id_torque_map     = dyn_comm_.SyncRead( Addr::torque_enable, target_id_list );
     for ( const auto& [id, torque] : id_torque_map ) tq_mode_[id] = torque;
 
+    // timeoutしていたら，pingを送って生存確認をする．
+    // if (dyn_comm_.timeout_last_read()){
+    //     for (auto id : target_id_list) 
+    //         dyn_comm_.tryPing(id) ? suspect_dead_[id]=0 : suspect_dead_[id]++; 
+    // }
+    
     // auto id_dv_op_mode_map = dyn_comm_.SyncRead({Addr::drive_mode, Addr::operating_mode}, target_id_list);  fflush(stdout);
     // for ( const auto& [id, dv_op]  : id_dv_op_mode_map ) {
     //     dv_mode_[id] = dv_op[0];

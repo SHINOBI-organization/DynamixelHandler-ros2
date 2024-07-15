@@ -8,9 +8,9 @@
     <arg name="name_pkg" default="dynamixel_handler"/>
 
     <!-- 通信設定 -->
-    <arg name="baudrate" default="57200"/>
+    <arg name="baudrate" default="1000000"/>
     <arg name="device_name" default="/dev/ttyUSB0"/>
-    <arg name="latency_timer" default="16"/>
+    <arg name="latency_timer" default="1"/>
 
     <node pkg="$(var name_pkg)" exec="dynamixel_handler_node" name="dyn_handler" namespace="$(var name_space)" output="screen">
         <!-- 通信の設定 -->

@@ -329,6 +329,36 @@ void DynamixelHandler::CallBackDxlLimit(const DynamixelLimit& msg) {
     list_write_limit_.clear();
 }
 
+void DynamixelHandler::CallBackDxlExternalPort(const DynamixelExternalPort& msg){
+    if ( msg.id_list.empty() ) return;
+    if ( msg.id_list.size() != msg.port_num.size() ) return;
+
+    //* ROMへの書き込みなので即座に実行する。
+    //! 今は簡易な実装なので，Rawな単体Write関数で書き込む．せめてSetExternalPort関数を作って，そこで書き込むようにするべき．
+    // modeがあったら書きこむ
+    if ( msg.id_list.size() == msg.mode.size() ) for (size_t i=0; i<msg.id_list.size(); i++) {
+        uint8_t id = msg.id_list[i];
+        uint16_t port_num = msg.port_num[i];
+        uint8_t mode = msg.mode[i];
+        if( ex_port_mode_wr_[id][port_num]!=mode ) WriteExternalPortMode(id, port_num, mode);
+        ex_port_mode_wr_[id][port_num] = ReadExternalPortMode(id, port_num);
+        // is_external_port_updated_[id] = true;
+    }
+    // dataがあったら書きこむ
+    if ( msg.id_list.size() == msg.data.size() ) for (size_t i=0; i<msg.id_list.size(); i++) {
+        uint8_t id = msg.id_list[i];
+        uint16_t port_num = msg.port_num[i];
+        uint8_t data = msg.data[i];
+        WriteExternalPortData(id, port_num, data);
+        ex_port_data_wr_[id][port_num] = data;
+    }
+    // bool do_write = false;
+    // for ( auto id: id_set_ ) if(is_external_port_updated_[id]){
+    //     if(tq_mode_[id] == TORQUE_DISABLE) do_write = true;
+    // }
+    // if ( do_write ) SyncWriteExPortMode();
+}
+
 double round4(double val) { return round(val*10000.0)/10000.0; }
 
 void DynamixelHandler::BroadcastDxlState(){
@@ -422,3 +452,30 @@ void DynamixelHandler::BroadcastDxlGoal(){
     }
     pub_goal_->publish(msg);
 }
+
+void DynamixelHandler::BroadcastDxlExternalPort(){
+    DynamixelExternalPort msg;
+    msg.stamp = this->get_clock()->now();
+
+    //! 今は簡易な実装なので，単体Read関数で読み込むが，本来はmain loopで一括読み込みしたデータをpubするだけ
+    for ( auto id : id_set_)  {
+        int port_num = series_[id] == SERIES_X ? 3 : SERIES_P ? 4 : 0;
+        msg.id_list.push_back(id);
+        for ( int i=1; i<=port_num; i++ ) switch (i) {
+            case 1: msg.mode_1.push_back(ex_port_mode_rw_[id][i]); break;
+            case 2: msg.mode_2.push_back(ex_port_mode_rw_[id][i]); break;
+            case 3: msg.mode_3.push_back(ex_port_mode_rw_[id][i]); break;
+            case 4: msg.mode_4.push_back(ex_port_mode_rw_[id][i]); break;
+            default: break;
+        }
+        for ( int i=1; i<=port_num; i++ ) switch (i) {
+            case 1: msg.data_1.push_back(ReadExternalPortData(id, i)); break;
+            case 2: msg.data_2.push_back(ReadExternalPortData(id, i)); break;
+            case 3: msg.data_3.push_back(ReadExternalPortData(id, i)); break;
+            case 4: msg.data_4.push_back(ReadExternalPortData(id, i)); break;
+            default: break;
+        }
+    }
+
+    pub_ex_port_->publish(msg);
+ }

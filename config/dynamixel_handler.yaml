@@ -2,21 +2,21 @@
 /**:
     ros__parameters:
     # 通信機器の設定
-        device_name: /dev/ttyUSB0 # 通信するデバイス名
-        baudrate: 1000000 # 通信速度
-        latency_timer: 4 # 通信のインターバル
+        # device_name: /dev/ttyUSB0 # 通信するデバイス名
+        # baudrate: 1000000 # 通信速度
+        # latency_timer: 4 # 通信のインターバル
     # 通信の設定
         dyn_comm/retry_num: 10
         dyn_comm/inerval_msec: 5
         dyn_comm/varbose: false
     # サーボの初期設定
         init/expected_servo_num: 0
-        init/auto_search_min_id: 0
-        init/auto_search_max_id: 20
-        init/auto_search_retry_times: 10
-        init/hardware_error_auto_clean: true # 初期化時に Hardware error を自動でクリアするかどうか
-        init/torque_auto_enable: true # 初期化時に Torque を自動でONにするかどうか
-        term/torque_auto_disable: true # 終了時に Torque を自動でOFFにするかどうか
+        init/auto_search_min_id: 100
+        init/auto_search_max_id: 120
+        init/auto_search_retry_times: 0
+        init/hardware_error_auto_clean: true
+        init/torque_auto_enable: true
+        term/torque_auto_disable: true
     # ループの設定
         loop_rate: 300 # メインループの周期
         ratio/read_state: 3 # この回数に一回 State を読み取る, 0=初回のみ
@@ -26,10 +26,10 @@
         ratio/read_goal: 10  # この回数に一回 Goal を読み取る, 0=初回のみ
         ratio/varbose_loop: 300 # メインループの処理時間，通信の成功率を出力, ex 100なら100回に1回出力
     # Read/Write方式
-        use/fast_read: false
+        use/fast_read: true
         use/split_read: false
         use/split_write: true
-        use/multi_rate_read: false
+        use/multi_rate_read: true
     # Readする情報
         read/present_pwm: false
         read/present_current: true
@@ -41,16 +41,16 @@
         read/present_temperature: false
     # 多周期でReadする情報
         multi_rate_read/ratio/present_pwm:             0
-        multi_rate_read/ratio/present_current:         1
-        multi_rate_read/ratio/present_velocity:        1
-        multi_rate_read/ratio/present_position:        1
+        multi_rate_read/ratio/present_current:         3
+        multi_rate_read/ratio/present_velocity:        3
+        multi_rate_read/ratio/present_position:        3
         multi_rate_read/ratio/velocity_trajectory:     0
         multi_rate_read/ratio/position_trajectory:     0
-        multi_rate_read/ratio/present_input_voltage:   10
-        multi_rate_read/ratio/present_temperature:     10
+        multi_rate_read/ratio/present_input_voltage:   601
+        multi_rate_read/ratio/present_temperature:     603
     # デバッグ用
         max_log_width: 6
-        varbose/callback: false
+        varbose/callback: true
         varbose/write_commad: true
         varbose/write_options: false
         varbose/read_state/raw: false

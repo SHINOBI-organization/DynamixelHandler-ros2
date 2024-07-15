@@ -23,7 +23,8 @@ set(msg_files
   "msg/DynamixelGain.msg"
   "msg/DynamixelGoal.msg"
   "msg/DynamixelLimit.msg"
-  
+  "msg/DynamixelExternalPort.msg"
+
   # write専用
   "msg/DynamixelCommand.msg"
   "msg/DynamixelCommandXControlCurrent.msg"

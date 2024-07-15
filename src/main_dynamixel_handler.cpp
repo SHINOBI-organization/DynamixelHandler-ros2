@@ -190,6 +190,8 @@ void DynamixelHandler::MainLoop(){
     list_write_goal_.clear();
     SyncWriteGain(list_write_gain_);
     list_write_gain_.clear();
+    // SyncWriteExPortData(list_write_ex_port_);
+    // list_write_ex_port_.clear();
 /* 処理時間時間の計測 */ wtime += duration_cast<microseconds>(system_clock::now()-wstart).count() / 1000.0;
 
     //* 複数周期でstateをreadする場合の処理
@@ -221,17 +223,22 @@ void DynamixelHandler::MainLoop(){
         double rate_suc_err = SyncReadHardwareErrors();
         if ( rate_suc_err>0.0) BroadcastDxlError();
     }
-    if ( ratio_limit_pub_ && cnt % ratio_limit_pub_ == 0 ) { // ratio_limit_pub_
+    if ( ratio_limit_pub_ && cnt % ratio_limit_pub_ == 0 ) { // ratio_limit_pub_の割合で実行
         double rate_suc_lim = SyncReadLimit(list_read_limit_); // 処理を追加する可能性を考えて，変数を別で用意する冗長な書き方をしている．
         if ( rate_suc_lim >0.0 ) BroadcastDxlLimit();
     }
-    if ( ratio_gain_pub_ && cnt % ratio_gain_pub_ == 0 ) { // ratio_gain_pub_
+    if ( ratio_gain_pub_ && cnt % ratio_gain_pub_ == 0 ) { // ratio_gain_pub_の割合で実行
         double rate_suc_gain = SyncReadGain(list_read_gain_);
         if ( rate_suc_gain>0.0 ) BroadcastDxlGain();
     }
-    if ( ratio_goal_pub_ && cnt % ratio_goal_pub_ == 0 ) { // ratio_goal_pub_
+    if ( ratio_goal_pub_ && cnt % ratio_goal_pub_ == 0 ) { // ratio_goal_pub_の割合で実行
         double rate_suc_goal = SyncReadGoal(list_read_goal_);
         if ( rate_suc_goal>0.0 ) BroadcastDxlGoal();
+    }
+    if ( ratio_ex_port_pub_ && cnt % ratio_ex_port_pub_ == 0 ) { // ratio_ex_port_pub_の割合で実行
+        // double rate_suc_ex_port_mode = SyncReadExPort(list_read_ex_port_);
+        // if ( rate_suc_ex_port>0.0 ) BroadcastDxlExPort();
+        BroadcastDxlExPort();
     }
 /* 処理時間時間の計測 */ rtime += duration_cast<microseconds>(system_clock::now()-rstart).count() / 1000.0;
 

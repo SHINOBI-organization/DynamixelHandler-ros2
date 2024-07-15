@@ -93,6 +93,7 @@ bool DynamixelHandler::ChangeOperatingMode(uint8_t id, DynamixelOperatingMode mo
 // モータを停止させてからトルクを入れる．
 bool DynamixelHandler::TorqueOn(uint8_t id){
     if ( !is_in(id, id_set_) ) return false;
+    if ( tq_mode_[id] == TORQUE_ENABLE ) return true; // 既にトルクが入っている場合は何もしない
     // dynamixel内のgoal値とこのプログラム内のgoal_w_を一致させる．
     const auto now_pos = ReadPresentPosition(id); // 失敗すると0が返って危ないので確認する
     if ( !( dyn_comm_.timeout_last_read() || dyn_comm_.comm_error_last_read() )){
@@ -120,6 +121,7 @@ bool DynamixelHandler::TorqueOn(uint8_t id){
 // トルクを切る
 bool DynamixelHandler::TorqueOff(uint8_t id){
     if ( !is_in(id, id_set_) ) return false;
+    if ( tq_mode_[id] == TORQUE_DISABLE ) return true; // 既にトルクが切れている場合は何もしない
     // トルクを切る
     WriteTorqueEnable(id, false);
     // 結果を確認
@@ -203,6 +205,42 @@ double DynamixelHandler::ReadHomingOffset(uint8_t id){
     auto addr = series_[id]==SERIES_X ? AddrX::homing_offset
                :series_[id]==SERIES_P ? AddrP::homing_offset : AddrX::homing_offset;
     return addr.pulse2val(dyn_comm_.tryRead(addr, id), model_[id]);
+}
+
+uint16_t DynamixelHandler::ReadExernalPortMode(uint8_t id, uint8_t port){
+    DynamixelAddress addr;
+    if ( series_[id]==SERIES_X ) switch (port) {
+        case 1: addr = AddrX::external_port_data_1; break;
+        case 2: addr = AddrX::external_port_data_2; break;
+        case 3: addr = AddrX::external_port_data_3; break;
+        default: return 0;
+    } 
+    if ( series_[id]==SERIES_P ) switch (port) {
+        case 1: addr = AddrP::external_port_data_1; break;
+        case 2: addr = AddrP::external_port_data_2; break;
+        case 3: addr = AddrP::external_port_data_3; break;
+        case 4: addr = AddrP::external_port_data_4; break;
+        default: return 0;
+    }
+    return dyn_comm_.tryRead(addr, id)
+}
+
+uint16_t DynamixelHandler::ReadExernalPortData(uint8_t id, uint8_t port){
+    DynamixelAddress addr;
+    if ( series_[id]==SERIES_X ) switch (port) {
+        case 1: addr = AddrX::external_port_mode_1; break;
+        case 2: addr = AddrX::external_port_mode_2; break;
+        case 3: addr = AddrX::external_port_mode_3; break;
+        default: return 0;
+    } 
+    if ( series_[id]==SERIES_P ) switch (port) {
+        case 1: addr = AddrP::external_port_mode_1; break;
+        case 2: addr = AddrP::external_port_mode_2; break;
+        case 3: addr = AddrP::external_port_mode_3; break;
+        case 4: addr = AddrP::external_port_mode_4; break;
+        default: return 0;
+    }
+    return dyn_comm_.tryRead(addr, id)
 }
 
 uint8_t DynamixelHandler::ReadOperatingMode(uint8_t id){
@@ -292,4 +330,40 @@ bool DynamixelHandler::WriteGains(uint8_t id, array<uint16_t, _num_gain> gains){
 
 bool DynamixelHandler::WriteOperatingMode(uint8_t id, uint8_t mode){ 
     return dyn_comm_.tryWrite(AddrCommon::operating_mode, id, mode);
+}
+
+bool DynamixelHandler::WriteExternalPortMode(uint8_t id, uint8_t port, uint16_t data){
+    DynamixelAddress addr;
+    if ( series_[id]==SERIES_X ) switch (port) {
+        case 1: addr = AddrX::external_port_data_1; break;
+        case 2: addr = AddrX::external_port_data_2; break;
+        case 3: addr = AddrX::external_port_data_3; break;
+        default: return false;
+    } 
+    if ( series_[id]==SERIES_P ) switch (port) {
+        case 1: addr = AddrP::external_port_data_1; break;
+        case 2: addr = AddrP::external_port_data_2; break;
+        case 3: addr = AddrP::external_port_data_3; break;
+        case 4: addr = AddrP::external_port_data_4; break;
+        default: return false;
+    }
+    return dyn_comm_.tryWrite(addr, id, data);
+}
+
+bool DynamixelHandler::WriteExternalPortData(uint8_t id, uint8_t port, uint16_t data){
+    DynamixelAddress addr;
+    if ( series_[id]==SERIES_X ) switch (port) {
+        case 1: addr = AddrX::external_port_mode_1; break;
+        case 2: addr = AddrX::external_port_mode_2; break;
+        case 3: addr = AddrX::external_port_mode_3; break;
+        default: return false;
+    } 
+    if ( series_[id]==SERIES_P ) switch (port) {
+        case 1: addr = AddrP::external_port_mode_1; break;
+        case 2: addr = AddrP::external_port_mode_2; break;
+        case 3: addr = AddrP::external_port_mode_3; break;
+        case 4: addr = AddrP::external_port_mode_4; break;
+        default: return false;
+    }
+    return dyn_comm_.tryWrite(addr, id, data);
 }

@@ -13,6 +13,7 @@
 #include "dynamixel_handler/msg/dynamixel_gain.hpp"
 #include "dynamixel_handler/msg/dynamixel_limit.hpp"
 #include "dynamixel_handler/msg/dynamixel_goal.hpp"
+#include "dynamixel_handler/msg/dynamixel_external_port.hpp"
 #include "dynamixel_handler/msg/dynamixel_command.hpp"
 #include "dynamixel_handler/msg/dynamixel_command_x_control_position.hpp"
 #include "dynamixel_handler/msg/dynamixel_command_x_control_velocity.hpp"
@@ -84,11 +85,13 @@ class DynamixelHandler : public rclcpp::Node {
         void BroadcastDxlLimit();
         void BroadcastDxlGoal(); 
         void BroadcastDxlGain();
+        void BroadcastDxlExternalPort();
         // void CallBackDxlConfig(const DynamixelConfig& msg); // todo
         // void CallBackDxlExtra (const DynamixelExtra& msg);  // todo
         void CallBackDxlLimit (const DynamixelLimit& msg);
         void CallBackDxlGoal  (const DynamixelGoal& msg); 
         void CallBackDxlGain  (const DynamixelGain& msg); 
+        void CallBackDxlExternalPort(const DynamixelExternalPort& msg);
         void CallBackDxlCommand               (const DynamixelCommand::SharedPtr msg);
         void CallBackDxlCmd_X_Position        (const DynamixelCommandXControlPosition& msg);
         void CallBackDxlCmd_X_Velocity        (const DynamixelCommandXControlVelocity& msg);
@@ -105,6 +108,7 @@ class DynamixelHandler : public rclcpp::Node {
         rclcpp::Publisher<DynamixelLimit>::SharedPtr pub_limit_;
         rclcpp::Publisher<DynamixelGain>::SharedPtr  pub_gain_;
         rclcpp::Publisher<DynamixelGoal>::SharedPtr  pub_goal_;
+        rclcpp::Publisher<DynamixelExternalPort>::SharedPtr pub_ex_port_;
         rclcpp::Subscription<DynamixelCommand>::SharedPtr sub_command_;
         rclcpp::Subscription<DynamixelCommandXControlPosition>::SharedPtr         sub_cmd_x_pos_;
         rclcpp::Subscription<DynamixelCommandXControlVelocity>::SharedPtr         sub_cmd_x_vel_;
@@ -118,6 +122,7 @@ class DynamixelHandler : public rclcpp::Node {
         rclcpp::Subscription<DynamixelGain>::SharedPtr  sub_gain_;
         rclcpp::Subscription<DynamixelLimit>::SharedPtr sub_limit_;
         rclcpp::Subscription<DynamixelGoal>::SharedPtr  sub_goal_;
+        rclcpp::Subscription<DynamixelExternalPort>::SharedPtr sub_ex_port_;
   
         //* 各種のフラグとパラメータ
         unsigned int loop_rate_ = 50;
@@ -127,6 +132,7 @@ class DynamixelHandler : public rclcpp::Node {
         unsigned int ratio_gain_pub_   = 100; // 0の時は初回のみ
         unsigned int ratio_goal_pub_   = 100; // 0の時は初回のみ
         unsigned int ratio_mainloop_   = 100; // 0の時は初回のみ
+        unsigned int ratio_ex_port_pub_ = 100; // 0の時は初回のみ
         unsigned int width_log_ = 7;
         bool use_split_write_     = false;
         bool use_split_read_      = false;
@@ -203,24 +209,30 @@ class DynamixelHandler : public rclcpp::Node {
         map<uint8_t, uint16_t> series_; // 各dynamixelの id と series のマップ
         map<uint8_t, size_t> num_;  // 各dynamixelの series と　個数のマップ 無くても何とかなるけど, 効率を考えて保存する
         // 連結しているサーボの個々の状態を保持するmap
+        // - ROM
         static inline map<uint8_t, bool> tq_mode_;    // 各dynamixelの id と トルクON/OFF のマップ
         static inline map<uint8_t, uint8_t> op_mode_; // 各dynamixelの id と 制御モード のマップ
         static inline map<uint8_t, uint8_t> dv_mode_; // 各dynamixelの id と ドライブモード のマップ
+        static inline map<uint8_t, map<uint8_t, uint8_t>> ex_port_mode_wr_;  // 各dynamixelの id と external port のモード のマップ 読み書き共用
+        static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボへ書き込む制限値のマップ
+        static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボから読み込んだ制限値のマップ
+        // - RAM
+        static inline map<uint8_t, map<uint8_t, uint16_t>> ex_port_data_wr_;  // 各dynamixelの id と external port のデータ のマップ 読み書き共用
         static inline map<uint8_t, array<bool,   _num_hw_err>> hardware_error_; // 各dynamixelの id と サーボが起こしたハードウェアエラーのマップ, 中身の並びはHWErrIndexに対応する
         static inline map<uint8_t, array<double, _num_state >> state_r_;  // 各dynamixelの id と サーボから読み込んだ状態のマップ
         static inline map<uint8_t, array<double, _num_goal  >> goal_w_; // 各dynamixelの id と サーボへ書き込む指令のマップ
         static inline map<uint8_t, array<double ,_num_goal  >> goal_r_; // 各dynamixelの id と サーボから読み込んだ指令のマップ
-        static inline map<uint8_t, array<uint16_t,_num_gain  >> gain_w_;    // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<uint16_t,_num_gain  >> gain_r_;    // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<double, _num_limit >> limit_w_;   // 各dynamixelの id と サーボ
-        static inline map<uint8_t, array<double, _num_limit >> limit_r_;   // 各dynamixelの id と サーボ
+        static inline map<uint8_t, array<uint16_t,_num_gain >> gain_w_;    // 各dynamixelの id と サーボへ書き込むゲインのマップ
+        static inline map<uint8_t, array<uint16_t,_num_gain >> gain_r_;    // 各dynamixelの id と サーボから読み込んだゲインのマップ
 
         // 上記の変数を適切に使うための補助的なフラグ
-        static inline map<uint8_t, double> when_op_mode_updated_; // 各dynamixelの id と op_mode_ が更新された時刻のマップ
-        static inline map<uint8_t, bool> is_goal_updated_;       // topicのcallbackによって，goal_w_が更新されたかどうかを示すマップ
-        static inline map<uint8_t, bool> is_gain_updated_;       // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
-        static inline map<uint8_t, bool> is_limit_updated_;       // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
-        static inline bool has_hardware_err_ = false; // 連結しているDynamixelのうち，どれか一つでもハードウェアエラーを起こしているかどうか
+        static inline map<uint8_t, double> when_op_mode_updated_;  // 各dynamixelの id と op_mode_ が更新された時刻のマップ
+        static inline map<uint8_t, bool> is_limit_updated_;        // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_ex_port_mode_updated_; // topicのcallbackによって，ex_port_mode_wr_ が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_goal_updated_;         // topicのcallbackによって，goal_w_が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_gain_updated_;         // topicのcallbackによって，limit_w_が更新されたかどうかを示すマップ
+        static inline map<uint8_t, bool> is_ex_port_data_updated_; // topicのcallbackによって，ex_port_data_wr_ が更新されたかどうかを示すマップ
+        static inline bool has_hardware_err_ = false;              // 連結しているDynamixelのうち，どれか一つでもハードウェアエラーを起こしているかどうか
         // 各周期で実行するserial通信の内容を決めるためのset
         static inline set<GoalValueIndex> list_write_goal_;
         static inline set<GainIndex>      list_write_gain_;
@@ -254,6 +266,8 @@ class DynamixelHandler : public rclcpp::Node {
         double  ReadHomingOffset(uint8_t servo_id);
         uint8_t ReadOperatingMode(uint8_t servo_id);
         uint8_t ReadDriveMode(uint8_t servo_id);
+        uint16_t ReadExternalPortMode(uint8_t servo_id, uint8_t port);
+        uint16_t ReadExternalPortData(uint8_t servo_id, uint8_t port);
         bool WriteTorqueEnable(uint8_t servo_id, bool enable);
         bool WriteGoalPWM(uint8_t servo_id, double pwm);
         bool WriteGoalCurrent(uint8_t servo_id, double current);
@@ -265,15 +279,21 @@ class DynamixelHandler : public rclcpp::Node {
         bool WriteOperatingMode(uint8_t servo_id, uint8_t mode);
         bool WriteBusWatchdog(uint8_t servo_id, double time);
         bool WriteGains(uint8_t servo_id, array<uint16_t, _num_gain> gains);
+        bool WriteExternalPortMode(uint8_t servo_id, uint8_t port, uint8_t mode);
+        bool WriteExternalPortData(uint8_t servo_id, uint8_t port, uint16_t data);
         //* 連結しているDynamixelに一括で読み書きするloopで使用する機能
         template <typename Addr=AddrCommon> void SyncWriteGoal(set<GoalValueIndex> list_write_goal);
         template <typename Addr=AddrCommon> void SyncWriteGain (set<GainIndex> list_write_gain); 
         template <typename Addr=AddrCommon> void SyncWriteLimit(set<LimitIndex> list_write_limit);
+        template <typename Addr=AddrCommon> void SyncWriteExPortData(set<StValueIndex> list_write_ex_port_data);
+        template <typename Addr=AddrCommon> void SyncWriteExPortMode(set<StValueIndex> list_write_ex_port_mode);
         template <typename Addr=AddrCommon> double SyncReadHardwareErrors();
         template <typename Addr=AddrCommon> double SyncReadState(set<StValueIndex> list_read_state);
         template <typename Addr=AddrCommon> double SyncReadGoal(set<GoalValueIndex> list_read_goal);
         template <typename Addr=AddrCommon> double SyncReadGain(set<GainIndex> list_read_gain); 
         template <typename Addr=AddrCommon> double SyncReadLimit(set<LimitIndex> list_read_limit);
+        template <typename Addr=AddrCommon> double SyncReadExPortData(set<StValueIndex> list_read_ex_port_data);
+        template <typename Addr=AddrCommon> double SyncReadExPortMode(set<StValueIndex> list_read_ex_port_mode);
         template <typename Addr=AddrCommon> void StopDynamixels();
         template <typename Addr=AddrCommon> void CheckDynamixels();
 };
