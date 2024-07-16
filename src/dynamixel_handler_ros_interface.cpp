@@ -459,23 +459,20 @@ void DynamixelHandler::BroadcastDxlExternalPort(){
 
     //! 今は簡易な実装なので，単体Read関数で読み込むが，本来はmain loopで一括読み込みしたデータをpubするだけ
     for ( auto id : id_set_)  {
-        int port_num = series_[id] == SERIES_X ? 3 : SERIES_P ? 4 : 0;
-        msg.id_list.push_back(id);
-        for ( int i=1; i<=port_num; i++ ) switch (i) {
-            case 1: msg.mode_1.push_back(ex_port_mode_rw_[id][i]); break;
-            case 2: msg.mode_2.push_back(ex_port_mode_rw_[id][i]); break;
-            case 3: msg.mode_3.push_back(ex_port_mode_rw_[id][i]); break;
-            case 4: msg.mode_4.push_back(ex_port_mode_rw_[id][i]); break;
-            default: break;
-        }
-        for ( int i=1; i<=port_num; i++ ) switch (i) {
-            case 1: msg.data_1.push_back(ReadExternalPortData(id, i)); break;
-            case 2: msg.data_2.push_back(ReadExternalPortData(id, i)); break;
-            case 3: msg.data_3.push_back(ReadExternalPortData(id, i)); break;
-            case 4: msg.data_4.push_back(ReadExternalPortData(id, i)); break;
-            default: break;
+        uint8_t port_size = series_[id] == SERIES_X ? 3 : SERIES_P ? 4 : 0;
+        for ( auto i=1; i<=port_size; i++ ){
+            msg.id_list.push_back(id);
+            msg.port_num.push_back(i);
+            msg.mode.push_back(ex_port_mode_wr_[id][i]);
+            uint16_t data;
+            switch ( ex_port_mode_wr_[id][i] ) {
+                case EXTERNAL_PORT_MODE_AIN:          data = ReadExternalPortData(id, i); break;
+                case EXTERNAL_PORT_MODE_DOUT:         data = 0; break;
+                case EXTERNAL_PORT_MODE_DIN_PULLUP:   data = 0; break;
+                case EXTERNAL_PORT_MODE_DIN_PULLDOWN: data = 0; break; 
+            }
+            msg.data.push_back(data);
         }
     }
-
     pub_ex_port_->publish(msg);
- }
+}

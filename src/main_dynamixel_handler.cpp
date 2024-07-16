@@ -238,7 +238,7 @@ void DynamixelHandler::MainLoop(){
     if ( ratio_ex_port_pub_ && cnt % ratio_ex_port_pub_ == 0 ) { // ratio_ex_port_pub_の割合で実行
         // double rate_suc_ex_port_mode = SyncReadExPort(list_read_ex_port_);
         // if ( rate_suc_ex_port>0.0 ) BroadcastDxlExPort();
-        BroadcastDxlExPort();
+        BroadcastDxlExternalPort();
     }
 /* 処理時間時間の計測 */ rtime += duration_cast<microseconds>(system_clock::now()-rstart).count() / 1000.0;
 
