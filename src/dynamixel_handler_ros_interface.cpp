@@ -336,6 +336,7 @@ void DynamixelHandler::CallBackDxlExternalPort(const DynamixelExternalPort& msg)
     //* ROMへの書き込みなので即座に実行する。
     //! 今は簡易な実装なので，Rawな単体Write関数で書き込む．せめてSetExternalPort関数を作って，そこで書き込むようにするべき．
     // modeがあったら書きこむ
+    vector<uint8_t> changed_id_list;
     if ( msg.id_list.size() == msg.mode.size() ) for (size_t i=0; i<msg.id_list.size(); i++) {
         uint8_t id = msg.id_list[i];
         uint16_t port_num = msg.port_num[i];
@@ -343,15 +344,23 @@ void DynamixelHandler::CallBackDxlExternalPort(const DynamixelExternalPort& msg)
         if( ex_port_mode_wr_[id][port_num]!=mode ) WriteExternalPortMode(id, port_num, mode);
         ex_port_mode_wr_[id][port_num] = ReadExternalPortMode(id, port_num);
         // is_external_port_updated_[id] = true;
+        changed_id_list.push_back(id);
     }
+    if ( varbose_callback_ && !changed_id_list.empty()) ROS_INFO_STREAM(update_info(changed_id_list, "external port mode"));
+    
     // dataがあったら書きこむ
+    changed_id_list.clear();
     if ( msg.id_list.size() == msg.data.size() ) for (size_t i=0; i<msg.id_list.size(); i++) {
         uint8_t id = msg.id_list[i];
         uint16_t port_num = msg.port_num[i];
         uint8_t data = msg.data[i];
         WriteExternalPortData(id, port_num, data);
         ex_port_data_wr_[id][port_num] = data;
+        // is_external_port_updated_[id] = true;
+        changed_id_list.push_back(id);
     }
+    if ( varbose_callback_ && !changed_id_list.empty() ) ROS_INFO_STREAM(update_info(changed_id_list, "external port data"));
+
     // bool do_write = false;
     // for ( auto id: id_set_ ) if(is_external_port_updated_[id]){
     //     if(tq_mode_[id] == TORQUE_DISABLE) do_write = true;

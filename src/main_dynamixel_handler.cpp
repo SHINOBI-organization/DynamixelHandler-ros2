@@ -88,15 +88,17 @@ DynamixelHandler::DynamixelHandler() : Node("dynamixel_handler", rclcpp::NodeOpt
         sub_cmd_p_epos_ = create_subscription<DynamixelCommandPControlExtendedPosition>("dynamixel/p_cmd/extended_position", 4, bind(&DynamixelHandler::CallBackDxlCmd_P_ExtendedPosition, this, _1), sub_options);
     }
     sub_command_    = create_subscription<DynamixelCommand>("dynamixel/command", 10, bind(&DynamixelHandler::CallBackDxlCommand, this, _1), sub_options);
-    sub_goal_ = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1), sub_options);
-    sub_gain_ = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1), sub_options);
-    sub_limit_= create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1), sub_options);
+    sub_goal_   = create_subscription<DynamixelGoal> ("dynamixel/goal/w", 4, bind(&DynamixelHandler::CallBackDxlGoal, this, _1), sub_options);
+    sub_gain_   = create_subscription<DynamixelGain> ("dynamixel/gain/w", 4, bind(&DynamixelHandler::CallBackDxlGain, this, _1), sub_options);
+    sub_limit_  = create_subscription<DynamixelLimit>("dynamixel/limit/w",4, bind(&DynamixelHandler::CallBackDxlLimit, this, _1), sub_options);
+    sub_ex_port_= create_subscription<DynamixelExternalPort>("dynamixel/ex_port/w", 4, bind(&DynamixelHandler::CallBackDxlExternalPort, this, _1), sub_options);
 
     pub_state_ = create_publisher<DynamixelState>("dynamixel/state"  , 4);
     pub_error_ = create_publisher<DynamixelError>("dynamixel/error"  , 4);
-    pub_goal_  = create_publisher<DynamixelGoal> ("dynamixel/goal/r" , 4);
-    pub_gain_  = create_publisher<DynamixelGain> ("dynamixel/gain/r" , 4);
-    pub_limit_ = create_publisher<DynamixelLimit>("dynamixel/limit/r", 4);
+    pub_goal_   = create_publisher<DynamixelGoal> ("dynamixel/goal/r" , 4);
+    pub_gain_   = create_publisher<DynamixelGain> ("dynamixel/gain/r" , 4);
+    pub_limit_  = create_publisher<DynamixelLimit>("dynamixel/limit/r", 4);
+    pub_ex_port_= create_publisher<DynamixelExternalPort>("dynamixel/ex_port/r", 4);
 
     // 状態のreadの前にやるべき初期化
     double init_pa; this->get_parameter_or("init/profile_acceleration", init_pa, 600.0*DEG);

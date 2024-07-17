@@ -33,18 +33,20 @@
         <remap from="dynamixel/p_cmd/velocity"          to="dynamixel/p_cmd/velocity"/>
         <remap from="dynamixel/p_cmd/current"           to="dynamixel/p_cmd/current"/>
         <remap from="dynamixel/p_cmd/extended_position" to="dynamixel/p_cmd/extended_position"/>
-        <remap from="dynamixel/limit/w" to="dynamixel/limit/w"/>
-        <remap from="dynamixel/gain/w"  to="dynamixel/gain/w" />
-        <remap from="dynamixel/mode/w"  to="dynamixel/mode/w" />
-        <remap from="dynamixel/goal/w"  to="dynamixel/goal/w" />
+        <remap from="dynamixel/limit/w"    to="dynamixel/limit/w"/>
+        <remap from="dynamixel/gain/w"     to="dynamixel/gain/w" />
+        <remap from="dynamixel/mode/w"     to="dynamixel/mode/w" />
+        <remap from="dynamixel/goal/w"     to="dynamixel/goal/w" />
+        <remap from="dynamixel/ex_port/w"  to="dynamixel/ex_port/w" />
 
         <!-- 読み込み -->
         <remap from="dynamixel/state" to="dynamixel/state"/>
         <remap from="dynamixel/error" to="dynamixel/error"/>
-        <remap from="dynamixel/limit/r" to="dynamixel/limit/r"/>
-        <remap from="dynamixel/gain/r"  to="dynamixel/gain/r" />
-        <remap from="dynamixel/mode/r"  to="dynamixel/mode/r" />
-        <remap from="dynamixel/goal/r"  to="dynamixel/goal/r" />
+        <remap from="dynamixel/limit/r"    to="dynamixel/limit/r"/>
+        <remap from="dynamixel/gain/r"     to="dynamixel/gain/r" />
+        <remap from="dynamixel/mode/r"     to="dynamixel/mode/r" />
+        <remap from="dynamixel/goal/r"     to="dynamixel/goal/r" />
+        <remap from="dynamixel/ex_port/r"  to="dynamixel/ex_port/r" />
     </node>
 
 </launch>
