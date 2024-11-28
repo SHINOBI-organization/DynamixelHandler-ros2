@@ -6,6 +6,9 @@ Dynamixelとやり取りを行うライブラリは[別のリポジトリ](https
 
 note: ROS2のみ対応
 
+> [!IMPORTANT]
+> このリポジトリの開発はRobotis日本支店の[公式リポジトリ](https://github.com/ROBOTIS-JAPAN-GIT/DynamixelHandler-ros2)に引き継がれました．
+
 ## features of this package
  - Dynamixelというサーボを動かすことに特化した最小単位のPkg
    - このPkgの dynamixel_handler node と ロボットの制御を行う別の node を組み合わせて使う
